@@ -19,7 +19,7 @@
 
 // ==========================================================
 
-bool SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
+void SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 {
 	outHitInfo.hit = false;
 
@@ -27,100 +27,57 @@ bool SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 	Vector o = ray.getOrigin();
 	Vector l = ray.getDirection();
 
-	// Para saber si hemos colisionado con la esfera, asumimos que hemos intersectado
-	// en un punto y parametrizamos la ecuación de pertenencia en base a la distancia
-	// t desde el emisor de rayos hasta el punto intersectado. Despejando, obtenemos
-	// una ecuación de segundo grado.
-	float squaredR = radius * radius;
 	Vector OC = o - center;
 
 	float div = l.Dot(l);
 	float B = OC.Dot(l);
 	float squaredB = B * B;
 	float ac4 = div * OC.Dot(OC);
-	float squareRootResult = (squaredB - ac4 + squaredR);
+	float squareRootResult = (squaredB - ac4 + (radius * radius));
 
-	// Si B^2 - 4AC es negativo, no tiene solución (raiz de un número negativo), y por tanto
-	// el rayo no intersecta la esfera
-	if (squareRootResult < 0.0f)
-	{
-		return false;
-	}
+	float distance = -1.0f;
 
 	// Si el resultado de B^2 - 4AC es 0, significa que hemos intersectado la esfera
 	// en un sólo punto
-	if (squareRootResult == 0.0f)
+	if (squareRootResult == 0.0f && (-B) > 0.0f)
 	{
-		// Comprobamos que dicho punto es positivo, de lo contrario, significa
-		// que la esfera está detrás del emisor de rayos
-		if ((-B) > FLT_EPSILON)
+		distance = (-B / div);
+	}
+	else if(squareRootResult > 0.0f)
+	{
+		float squareRoot = sqrt(squareRootResult);
+
+		float case1 = ((-B - squareRoot) / div);
+		float case2 = ((-B + squareRoot) / div);
+
+		if (case1 <= 0.0f && case2 > 0.0f)
 		{
-			float distance = (-B / div);
-			outHitInfo.hitPoint = (o + (l * distance));
-			outHitInfo.hitNormal = outHitInfo.hitPoint - center;
-			outHitInfo.hitNormal.Normalize();
-			outHitInfo.numHittedMaterials = 1;
-			outHitInfo.hittedMaterials[0] = material;
-			outHitInfo.contributions[0] = 1.0f;
-			outHitInfo.hit = true;
-			
-			return true;
+			distance = case2;
 		}
-
-		return false;
+		else if (case2 <= 0.0f && case1 > 0.0f)
+		{
+			distance = case1;
+		}
+		else
+		{
+			distance = case1 <= case2 ? case1 : case2;
+		}
 	}
 
-	// El caso estándar, con 2 soluciones, significa que hemos intersectado
-	// la esfera en 2 puntos (por donde entra el rayo y por donde sale)
-	// Comprobamos que soluciones son positivas (es decir, no están detrás de la
-	// esfera), y nos quedamos con la más cercana al emisor.
-	float squareRoot = sqrt(squareRootResult);
-
-	float case1 = ((-B - squareRoot) / div);
-	float case2 = ((-B + squareRoot) / div);
-	
-	if (case1 <= 0.0f)
+	if (distance > 0.0f)
 	{
-		if (case2 <= 0.0f)
-			return false;
-
-		outHitInfo.hitPoint = (o + (l * case2));
+		outHitInfo.hitPoint = (o + (l * distance));
 		outHitInfo.hitNormal = outHitInfo.hitPoint - center;
 		outHitInfo.hitNormal.Normalize();
-		outHitInfo.numHittedMaterials = 1;
-		outHitInfo.hittedMaterials[0] = material;
-		outHitInfo.contributions[0] = 1.0f;
+		outHitInfo.hittedMaterial = *material;
+		outHitInfo.physicalMaterial = physicalMaterial;
 		outHitInfo.hit = true;
-		return true;
-	}
-	else if (case2 <= 0.0f)
-	{
-		outHitInfo.hitPoint = (o + (l * case1));
-		outHitInfo.hitNormal = outHitInfo.hitPoint - center;
-		outHitInfo.hitNormal.Normalize();
-		outHitInfo.numHittedMaterials = 1;
-		outHitInfo.hittedMaterials[0] = material;
-		outHitInfo.contributions[0] = 1.0f;
-		outHitInfo.hit = true;
-		return true;
-	}
-	else
-	{
-		float closer = case1 <= case2 ? case1 : case2;
-		outHitInfo.hitPoint = (o + (l * closer));
-		outHitInfo.hitNormal = outHitInfo.hitPoint - center;
-		outHitInfo.hitNormal.Normalize();
-		outHitInfo.numHittedMaterials = 1;
-		outHitInfo.hittedMaterials[0] = material;
-		outHitInfo.contributions[0] = 1.0f;
-		outHitInfo.hit = true;
-		return true;
 	}
 }
 
 // =================================================================================
 
-bool SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
+void SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 {
 	outHitInfo.hit = false;
 
@@ -134,74 +91,104 @@ bool SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 
 	Vector triangleNormal = (this->vertex[1] - this->vertex[0]).Cross(this->vertex[2] - this->vertex[0]);
 
-	float tSurf = triangleNormal.Magnitude() / 2.0f;
+	float tSurf = triangleNormal.Magnitude();
 	triangleNormal.Normalize();
 
 	float div = dir.Dot(triangleNormal);
-	if (div == 0.0f)
+	if (div != 0.0f)
 	{
-		return false;
+		// Completamos el resto de la ecuación
+		float nc = triangleNormal.Dot(center);
+		float np = triangleNormal.Dot(vertex[0]);
+
+		// Si la distancia obtenida es negativa, significa que el triángulo
+		// está detrás del emisor de rayos
+		float planeIntersectResult = -((nc - np) / div);
+		if (planeIntersectResult > 0.0f)
+		{
+			// Una vez hemos encontrado un punto en el plano definido por el triángulo,
+			// comprobamos que está dentro de este.
+			Vector hittedPoint = center + (dir * planeIntersectResult);
+
+			// Para comprobarlo, la suma de las áreas de los 3 sub-triángulos formados por el punto 
+			// contenido dentro del triángulo debe ser igual a la del triánglo original
+
+			float Ta = (vertex[1] - hittedPoint).Cross(vertex[2] - hittedPoint).Magnitude();
+			float Tb = (vertex[0] - hittedPoint).Cross(vertex[2] - hittedPoint).Magnitude();
+			float Tc = (vertex[0] - hittedPoint).Cross(vertex[1] - hittedPoint).Magnitude();
+
+			float a = Ta / tSurf;
+			float b = Tb / tSurf;
+			float c = Tc / tSurf;
+
+			float total = a + b + c;
+
+			if (abs(total - 1.0f) < PRECISSION_EPSILON)
+			{
+				outHitInfo.hitPoint = hittedPoint;
+				outHitInfo.hitNormal = (normal[0] * a + normal[1] * b + normal[2] * c).Normalize();
+				outHitInfo.u = ((abs(u[0]) * a) + (abs(u[1]) * b) + (abs(u[2]) * c));
+				outHitInfo.v = ((abs(v[0]) * a) + (abs(v[1]) * b) + (abs(v[2]) * c));
+				outHitInfo.u -= floor(outHitInfo.u);
+				outHitInfo.v -= floor(outHitInfo.v);
+				outHitInfo.hittedMaterial = averageMaterials(a, b, c, outHitInfo.u, outHitInfo.v);
+				outHitInfo.physicalMaterial = physicalMaterial;
+				outHitInfo.hit = true;
+			}
+		}
 	}
+}
 
-	// Completamos el resto de la ecuación
-	float nc = triangleNormal.Dot(center);
-	float np = triangleNormal.Dot(vertex[0]);
+SceneMaterial SceneTriangle::averageMaterials(float u, float v, float w, float finalU, float finalV)
+{
+	SceneMaterial averaged;
+	SceneMaterial * a = material[0];
+	SceneMaterial * b = material[1];
+	SceneMaterial * c = material[2];
 
-	// Si la distancia obtenida es negativa, significa que el triángulo
-	// está detrás del emisor de rayos
-	float planeIntersectResult = -((nc - np) / div);
-	if (planeIntersectResult <= 0.0f)
-	{
-		return false;
-	}
+	// Diffuse average (with texture)
+	averaged.diffuse = (a->diffuse * a->GetTextureColor(finalU, finalV)) * u
+		+ (b->diffuse * b->GetTextureColor(finalU, finalV)) * v
+		+ (c->diffuse * c->GetTextureColor(finalU, finalV)) * w;
 
-	// Una vez hemos encontrado un punto en el plano definido por el triángulo,
-	// comprobamos que está dentro de este.
-	Vector hittedPoint = center + (dir * planeIntersectResult);
+	// Reflective average
+	averaged.reflective = a->reflective * u 
+		+ b->reflective * v 
+		+ c->reflective * w;
 
-	// Para comprobarlo, la suma de las áreas de los 3 sub-triángulos formados por el punto 
-	// contenido dentro del triángulo debe ser igual a la del triánglo original
+	// IOR average
+	averaged.refraction_index = a->refraction_index * u
+		+ b->refraction_index * v
+		+ c->refraction_index * w;
 
-	float Ta = (vertex[1] - hittedPoint).Cross(vertex[2] - hittedPoint).Magnitude() / 2.0f;
-	float Tb = (vertex[0] - hittedPoint).Cross(vertex[2] - hittedPoint).Magnitude() / 2.0f;
-	float Tc = (vertex[1] - hittedPoint).Cross(vertex[0] - hittedPoint).Magnitude() / 2.0f;
+	// Shineness average
+	averaged.shininess = a->shininess * u
+		+ b->shininess * v
+		+ c->shininess * w;
 
-	float a = Ta / tSurf;
-	float b = Tb / tSurf;
-	float c = Tc / tSurf;
+	// Specular average
+	averaged.specular = a->specular * u
+		+ b->specular * v
+		+ c->specular * w;
 
-	float total = a + b + c;
+	// Transparent average
+	averaged.transparent = a->transparent * u
+		+ b->transparent * v
+		+ c->transparent * w;
 
-	if(abs(total - 1.0f) < PRECISSION_EPSILON)
-	{
-		outHitInfo.hitPoint = hittedPoint;
-		outHitInfo.hitNormal = (normal[0] * a + normal[1] * b + normal[2] * c).Normalize();
-		outHitInfo.numHittedMaterials = 3;
-		outHitInfo.hittedMaterials[0] = material[0];
-		outHitInfo.hittedMaterials[1] = material[1];
-		outHitInfo.hittedMaterials[2] = material[2];
-		outHitInfo.contributions[0] = a;
-		outHitInfo.contributions[1] = b;
-		outHitInfo.contributions[2] = c;
-		outHitInfo.u[0] = u[0]; outHitInfo.v[0] = v[0];
-		outHitInfo.u[1] = u[1]; outHitInfo.v[1] = v[1];
-		outHitInfo.u[2] = u[2]; outHitInfo.v[2] = v[2];
-		outHitInfo.hit = true;
-		return true;
-	}
-
-	return false;
+	return averaged;
 }
 
 // =================================================================================
 
-bool SceneModel::testIntersection(const Ray & ray, HitInfo & outInfo)
+void SceneModel::testIntersection(const Ray & ray, HitInfo & outInfo)
 {
 	HitInfo closer;
 	closer.hit = false;
 	for (SceneTriangle & st : this->triangleList)
 	{
-		if (st.testIntersection(ray, outInfo))
+		st.testIntersection(ray, outInfo);
+		if (outInfo.hit)
 		{
 			if (closer.hit)
 			{
@@ -217,7 +204,6 @@ bool SceneModel::testIntersection(const Ray & ray, HitInfo & outInfo)
 		}
 	}
 	outInfo = closer;
-	return outInfo.hit;
 }
 
 // =================================================================================
@@ -287,7 +273,7 @@ bool Scene::Load (char *filename)
 			tempMaterial->transparent = ParseColor (tempMaterialNode.getChildNode("transparent"));
 			tempMaterial->reflective = ParseColor (tempMaterialNode.getChildNode("reflective"));
 			tempMaterial->refraction_index = ParseColor (tempMaterialNode.getChildNode("refraction_index"));
-
+			
 			if (tempMaterial->texture != "")
 			{
 				if (!tempMaterial->LoadTexture ())
@@ -320,6 +306,7 @@ bool Scene::Load (char *filename)
 				tempSphere->rotation = ParseXYZ (tempObjectNode.getChildNode("rotation"));
 				tempSphere->position = ParseXYZ (tempObjectNode.getChildNode("position"));
 				tempSphere->center = ParseXYZ (tempObjectNode.getChildNode("center"));
+				tempSphere->physicalMaterial = (CHECK_ATTR(tempObjectNode.getChildNode("physicalMaterial").getAttribute("name")));
 				m_ObjectList.push_back (tempSphere);
 			}
 			else if (!strcasecmp(tempObjectNode.getName (), "triangle"))
@@ -331,6 +318,7 @@ bool Scene::Load (char *filename)
 				tempTriangle->scale = ParseXYZ (tempObjectNode.getChildNode("scale"));
 				tempTriangle->rotation = ParseXYZ (tempObjectNode.getChildNode("rotation"));
 				tempTriangle->position = ParseXYZ (tempObjectNode.getChildNode("position"));
+				tempTriangle->physicalMaterial = (CHECK_ATTR(tempObjectNode.getChildNode("physicalMaterial").getAttribute("name")));
 				
 				// Load Vertex 0
 				vertexNode = tempObjectNode.getChildNodeWithAttribute ("vertex", "index", "0");
@@ -374,6 +362,7 @@ bool Scene::Load (char *filename)
 				tempModel->scale = ParseXYZ (tempObjectNode.getChildNode("scale"));
 				tempModel->rotation = ParseXYZ (tempObjectNode.getChildNode("rotation"));
 				tempModel->position = ParseXYZ (tempObjectNode.getChildNode("position"));
+				tempModel->physicalMaterial = CHECK_ATTR(tempObjectNode.getChildNode("physicalMaterial").getAttribute("name"));
 				
 				SceneMaterial * materialPtr = GetMaterial(material);
 
@@ -416,6 +405,7 @@ bool Scene::Load (char *filename)
 							tempTriangle.vertex[0] = v1;
 							tempTriangle.normal[0] = normal;
 							// Texture Coords
+
 							if (sceneObj.m_pMeshs[obj].bTextCoords)
 							{
 								tempTriangle.u[0] = sceneObj.m_pMeshs[obj].pTexs[sceneObj.m_pMeshs[obj].pFaces[n].corner[0]].tu;
@@ -641,4 +631,3 @@ bool Scene::ParseOBJCoords (char *str, int &num, int v_index[3], int n_index[3])
 
 	return true;
 }
-

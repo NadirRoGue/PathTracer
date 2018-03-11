@@ -20,8 +20,10 @@
 #include <iostream>
 #include <time.h>
 
+#include "PhysicalMaterial.h"
 #include "Scene.h"
 #include "RayTrace.h"
+
 
 
 void RayTrace::preRenderInit()
@@ -61,50 +63,15 @@ Vector RayTrace::DoRayTrace(int screenX, int screenY)
 	Scene &la_escena = m_Scene;
 	Camera &la_camara = la_escena.GetCamera();
 
-	srand(time(NULL));
+	float t = float(screenX) / float(Scene::WINDOW_WIDTH);
+	float s = float(screenY) / float(Scene::WINDOW_HEIGHT);
 
-	static float max = 1.0 - FLT_EPSILON;
+	Ray ray = wrapper.getRayForPixel(t, s);
 
-	HitInfo closer;
-	HitInfo info;
-	Ray ray;
-
-	float rand1, rand2, t, s;
-
-	static unsigned int numObjects = la_escena.GetNumObjects();
-
-	closer.hit = false;
-
-	rand1 = float(rand() % 1000) / 1000.0f;
-	rand2 = float(rand() % 1000) / 1000.0f;
-
-	t = float(screenX) / float(Scene::WINDOW_WIDTH);
-	s = float(screenY) / float(Scene::WINDOW_HEIGHT);
-
-	ray = wrapper.getRayForPixel(t, s);
-
-	for (unsigned int i = 0; i < numObjects; i++)
-	{
-		SceneObject * object = la_escena.GetObjectW(i);
-
-		if (object->testIntersection(ray, info))
-		{
-			if (closer.hit)
-			{
-				float closerDist = (la_camara.GetPosition() - closer.hitPoint).Magnitude();
-				float currentDist = (la_camara.GetPosition() - info.hitPoint).Magnitude();
-
-				if (closerDist <= currentDist)
-				{
-					continue;
-				}
-			}
-			closer = info;
-		}
-	}
-
-	return Shade(closer);
+	return Shade(ray);
 }
+
+// ===================================================================================
 
 Vector RayTrace::DoSuperSamplingRayTrace(int screenX, int screenY)
 {
@@ -117,8 +84,6 @@ Vector RayTrace::DoSuperSamplingRayTrace(int screenX, int screenY)
 
 	static float max = 1.0 - FLT_EPSILON;
 
-	HitInfo closer;
-	HitInfo info;
 	Ray ray;
 
 	float rand1, rand2, t, s;
@@ -129,8 +94,6 @@ Vector RayTrace::DoSuperSamplingRayTrace(int screenX, int screenY)
 
 	for (unsigned int pass = 0; pass < samples; pass++)
 	{
-		closer.hit = false;
-
 		rand1 = float(rand() % 1000) / 1000.0f;
 		rand2 = float(rand() % 1000) / 1000.0f;
 
@@ -139,31 +102,14 @@ Vector RayTrace::DoSuperSamplingRayTrace(int screenX, int screenY)
 
 		ray = wrapper.getRayForPixel(t, s);
 
-		for (unsigned int i = 0; i < numObjects; i++)
-		{
-			SceneObject * object = la_escena.GetObjectW(i);
-
-			if (object->testIntersection(ray, info))
-			{
-				if (closer.hit)
-				{
-					float closerDist = (la_camara.GetPosition() - closer.hitPoint).Magnitude();
-					float currentDist = (la_camara.GetPosition() - info.hitPoint).Magnitude();
-
-					if (closerDist <= currentDist)
-					{
-						continue;
-					}
-				}
-				closer = info;
-			}
-		}
-
-		color = color + Shade(closer);
+		color = color + Shade(ray);
 	}
 
 	return (color / float(samples));
 }
+
+// ===================================================================================
+
 
 Vector RayTrace::DoMonteCarloRayTrace(int screenX, int screenY)
 {
@@ -172,33 +118,105 @@ Vector RayTrace::DoMonteCarloRayTrace(int screenX, int screenY)
 
 // ===================================================================================
 
-Vector RayTrace::Shade(HitInfo & info)
+HitInfo RayTrace::Intersect(const Ray & ray)
 {
-	if (info.hit)
+	HitInfo info;
+	HitInfo closer;
+	closer.hit = false;
+
+	Vector camPos = m_Scene.GetCamera().GetPosition();
+
+	for (unsigned int i = 0; i < m_Scene.GetNumObjects(); i++)
 	{
-		SceneMaterial averageMaterialAtPoint = AverageMaterial(info.hittedMaterials, info.contributions, info.numHittedMaterials);
-		Vector materialContribution = MaterialContribution(averageMaterialAtPoint, Vector());
-		Vector Lr;
-		for (unsigned int i = 0; i < m_Scene.GetNumLights(); i++)
+		SceneObject * object = m_Scene.GetObjectW(i);
+
+		object->testIntersection(ray, info);
+		if (info.hit)
 		{
-			SceneLight * sl = m_Scene.GetLight(i);
-			Vector lightVector = (sl->position - info.hitPoint).Normalize();
+			if (closer.hit)
+			{
+				float closerDist = (camPos - closer.hitPoint).Magnitude();
+				float currentDist = (camPos - info.hitPoint).Magnitude();
 
-			Vector lightContribution = LightContribution(info, sl);
-			//Vector materialContribution = MaterialContribution(info, lightVector);
+				if (closerDist <= currentDist)
+				{
+					continue;
+				}
+			}
+			closer = info;
+		}
+	}
 
-			float cosValue = info.hitNormal.Dot(lightVector);
-			cosValue = cosValue < 0.0f ? 0.0f : cosValue;
-			Lr = Lr + (lightContribution * materialContribution * cosValue);
+	return closer;
+}
+
+Vector RayTrace::Shade(const Ray & ray)
+{
+	HitInfo info;
+	
+	if (ray.getDepth() < MAX_BOUNCES && (info = Intersect(ray)).hit)
+	{
+		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
+		Vector Lr;
+		Ray scattered;
+		Vector lightVector;
+		Vector lightContribution;
+
+		PhysicalMaterial * BRDF = PhysicalMaterialTable::getInstance().getMaterialByName(info.physicalMaterial);
+		if (BRDF == NULL)
+		{
+			return Vector();
 		}
 
-		Lr = Lr + materialContribution * m_Scene.GetBackground().ambientLight;
+		// Direct lighting
+		for (unsigned int i = 0; i < m_Scene.GetNumLights(); i++)
+		{
+			Vector diffuseC, specularC;
+			SceneLight * sl = m_Scene.GetLight(i);
+
+			lightVector = (sl->position - info.hitPoint).Normalize();
+
+			lightContribution = LightContribution(info, sl);
+
+			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
+
+			// Diffuse reflectance
+			if (BRDF->computeDiffuseRadiance(ray, info, lightVector, scattered, diffuseC))
+			{
+				diffuseC = diffuseC * Shade(scattered);
+			}
+
+			// Specular reflectance
+			if (BRDF->computeSpecularRadiance(ray, info, lightVector, scattered, specularC))
+			{
+				specularC = specularC * Shade(scattered);
+			}
+
+			Lr = Lr + (lightContribution * (diffuseC + specularC) * cosValue);
+		}
+		
+		// Specular reflection
+		Vector reflexion;
+		if (BRDF->scatterReflexion(ray, info, scattered, reflexion))
+		{
+			Lr = Lr + (reflexion * Shade(scattered));
+		}
+
+		// Refraction
+		Vector refracted;
+		if (BRDF->scatterTransmission(ray, info, scattered, refracted))
+		{
+			Lr = Lr + (refracted * Shade(scattered));
+		}
+
+		// Ambient lighting
+		Lr = Lr + BRDF->computeAmbientRadiance(ray, info) * m_Scene.GetBackground().ambientLight;
 
 		return Lr;
 	}
 	else
 	{
-		return m_Scene.GetBackground().color;
+		return Vector(m_Scene.GetBackground().color);
 	}
 }
 
@@ -218,13 +236,13 @@ Vector RayTrace::LightContribution(HitInfo & info, SceneLight * light)
 	{
 		SceneObject * so = m_Scene.GetObjectW(i);
 		
-		if (so->testIntersection(lightVisibilityTest, visibilityInfo))
+		so->testIntersection(lightVisibilityTest, visibilityInfo);
+		if (visibilityInfo.hit)
 		{
 			float distanceToHit = (visibilityInfo.hitPoint - info.hitPoint).Magnitude();
 			if (distanceToHit < distToLight)
 			{
 				visible = false;
-
 			}
 		}
 	}
@@ -237,61 +255,7 @@ Vector RayTrace::LightContribution(HitInfo & info, SceneLight * light)
 	else
 	{
 		return Vector();
-		//return m_Scene.GetBackground().ambientLight;
 	}
-}
-
-SceneMaterial RayTrace::AverageMaterial(SceneMaterial * materials[3], float contributions[3],  unsigned int numMaterials)
-{
-	numMaterials = numMaterials > 3 ? 3 : numMaterials;
-
-	SceneMaterial result;
-	for (unsigned int i = 0; i < numMaterials; i++)
-	{
-		float contribution = contributions[i];
-		result.diffuse = result.diffuse + (materials[i]->diffuse * contribution);
-		result.reflective = result.reflective + (materials[i]->reflective * contribution);
-		result.refraction_index = result.refraction_index + (materials[i]->refraction_index * contribution);
-		result.shininess += (materials[i]->shininess * contribution);
-		result.specular = result.specular + (materials[i]->specular * contribution);
-		result.transparent = result.transparent + (materials[i]->transparent * contribution);
-	}
-
-	return result;
-}
-
-Vector RayTrace::MaterialContribution(SceneMaterial & material, Vector LightVector)
-{
-	Vector finalColor;
-	Vector uv;
-
-	/*for (unsigned int z = 0; z < info.numHittedMaterials; z++)
-	{
-		uv = uv + Vector(info.u[z], info.v[z], 0.0f) * info.contributions[z];
-	}*/
-
-	finalColor = material.diffuse;
-
-	/*for (unsigned int z = 0; z < info.numHittedMaterials; z++)
-	{
-		SceneMaterial * mat = info.hittedMaterials[z];
-		finalColor = finalColor + (mat->diffuse * info.contributions[z]);
-	}*/
-	
-	/*
-	for (unsigned int z = 0; z < info.numHittedMaterials; z++)
-	{
-		for (unsigned int m = 0; m < m_Scene.GetNumMaterials(); m++)
-		{
-			SceneMaterial * mat = m_Scene.GetMaterial(m);
-			if (mat->name == info.hittedMaterials[z])
-			{
-				finalColor = finalColor * mat->GetTextureColor(uv.x, uv.y);
-				break;
-			}
-		}
-	}*/
-	return finalColor;
 }
 
 // =========================================================================

@@ -20,6 +20,7 @@
 
 #include "pic.h"
 #include "Ray.h"
+#include "BRDF.h"
 
 class CameraWrapper
 {
@@ -47,13 +48,17 @@ class RayTrace
 {
 private:
 	CameraWrapper wrapper;
+
+	BRDF * lambertian;
+	BRDF * metallic;
+	BRDF * fresnel;
 public:
 	/* - Scene Variable for the Scene Definition - */
 	Scene m_Scene;
 
 	// -- Constructors & Destructors --
-	RayTrace(void) { }
-	~RayTrace(void) { }
+	RayTrace(void) { lambertian = new DiffuseLambertian(); metallic = new SpecularPhong(); fresnel = new Dielectric(); }
+	~RayTrace(void) { delete lambertian; delete metallic; delete fresnel; }
 
 	void preRenderInit();
 
@@ -65,11 +70,9 @@ public:
    Vector DoSuperSamplingRayTrace(int screenX, int screenY);
    Vector DoMonteCarloRayTrace(int screenX, int screenY);
 
-   Vector Shade(HitInfo & info);
+   HitInfo Intersect(const Ray & ray);
+
+   Vector Shade(const Ray & ray);
 
    Vector LightContribution(HitInfo & info, SceneLight * light);
-
-   SceneMaterial AverageMaterial(SceneMaterial * materials[3], float contributions[3], unsigned int numMaterials);
-
-   Vector MaterialContribution(SceneMaterial & material, Vector LightVector);
 };

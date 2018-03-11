@@ -3,6 +3,7 @@
 #include <string>
 
 #include "pic.h"
+#include "stb/stb_image.h"
 #include "Utils.h"
 
 class SceneMaterial
@@ -26,7 +27,7 @@ public:
 	{
 		if (tex)
 		{
-			//pic_free (tex);
+			pic_free(tex);
 		}
 	}
 
@@ -34,10 +35,10 @@ public:
 	// - LoadTexture - Loads a Texture from a filename
 	bool LoadTexture(void)
 	{
-		/*tex = jpeg_read ((char *)texture.c_str (), NULL);
+		tex = ReadJPEG ((char *)texture.c_str ());
 		if (tex == NULL)
-		return false;
-		*/
+			return false;
+
 		return true;
 	}
 
@@ -47,12 +48,13 @@ public:
 	{
 		if (tex)
 		{
-			int textureX = (int)(u * tex->m_width);
-			int textureY = (int)(v * tex->m_height);
+			int textureX = (int)(u * tex->m_width); // ... 3 hours lost wondering why tf the texture mapping wasnt working properly
+			int textureY = (int)(v * tex->m_height);// only had to swap m_height and m_width for textureX and textureY 
+													// tex->Pixel (ROW, COLUMN, CHANNEL)
 
-			return Vector(tex->Pixel(textureX, textureY, 0),
-				tex->Pixel(textureX, textureY, 1),
-				tex->Pixel(textureX, textureY, 2)
+			return Vector(tex->Pixel(textureY, textureX, 0),
+				tex->Pixel(textureY, textureX, 1),
+				tex->Pixel(textureY, textureX, 2)
 			);
 		}
 

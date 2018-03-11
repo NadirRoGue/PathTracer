@@ -122,6 +122,8 @@ public:
 	SceneObjectType::ObjectType type;
 	Vector scale, rotation, position;
 
+	std::string physicalMaterial;
+
 	// -- Constructors & Destructors --
 	SceneObject (void) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
 	SceneObject (SceneObjectType::ObjectType tp) : type (tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
@@ -132,7 +134,7 @@ public:
 	bool IsTriangle (void) { return (type == SceneObjectType::Triangle); }
 	bool IsModel (void) { return (type == SceneObjectType::Model); }
 
-	virtual bool testIntersection(const Ray & ray, HitInfo & outInfo) = 0;
+	virtual void testIntersection(const Ray & ray, HitInfo & outInfo) = 0;
 };
 
 /*
@@ -151,7 +153,7 @@ public:
 	SceneSphere (void) : SceneObject ("Sphere", SceneObjectType::Sphere) {}
 	SceneSphere (std::string nm) : SceneObject (nm, SceneObjectType::Sphere) {}
 
-	bool testIntersection(const Ray & ray, HitInfo & outInfo);
+	void testIntersection(const Ray & ray, HitInfo & outInfo);
 };
 
 /*
@@ -171,7 +173,9 @@ public:
 	SceneTriangle (void) : SceneObject ("Triangle", SceneObjectType::Triangle) {}
 	SceneTriangle (std::string nm) : SceneObject (nm, SceneObjectType::Triangle) {}
 
-	bool testIntersection(const Ray & ray, HitInfo & outInfo);
+	void testIntersection(const Ray & ray, HitInfo & outInfo);
+private:
+	SceneMaterial averageMaterials(float u, float v, float w, float finalU, float finalV);
 };
 
 /*
@@ -197,7 +201,7 @@ public:
 	// - GetTriangle - Gets the nth SceneTriangle
 	SceneTriangle *GetTriangle (int triIndex) { return &triangleList[triIndex]; }
 
-	bool testIntersection(const Ray & ray, HitInfo & outInfo);
+	void testIntersection(const Ray & ray, HitInfo & outInfo);
 };
 
 /*

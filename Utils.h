@@ -101,6 +101,12 @@ public:
 	{
 		return Vector (x * scaleVector.x, y * scaleVector.y, z * scaleVector.z, w * scaleVector.w);
 	}
+
+	Vector reflect(Vector normal) const
+	{
+		Vector thisVector(*this);
+		return Vector(thisVector - normal * 2.0f * normal.Dot(*this));
+	}
 };
 
 /*
@@ -395,6 +401,12 @@ inline Vector Vector::Cross (Vector vec2) const
 	crossVec.z = x * vec2.y - vec2.x * y;
 	crossVec.w = 0.0f;
 	return crossVec;
+}
+
+inline float clampValue(float value, float min, float max)
+{
+	value = value < min ? min : value > max ? max : value;
+	return value;
 }
 
 #endif // UTILS_H
