@@ -105,7 +105,7 @@ public:
 	Vector reflect(Vector normal) const
 	{
 		Vector thisVector(*this);
-		return Vector(thisVector - normal * 2.0f * normal.Dot(*this));
+		return Vector(thisVector - (normal * 2.0f * normal.Dot(*this)));
 	}
 };
 
@@ -405,7 +405,7 @@ inline Vector Vector::Cross (Vector vec2) const
 
 inline float clampValue(float value, float min, float max)
 {
-	value = value < min ? min : value > max ? max : value;
+	value = (value < min ? min : value > max ? max : value);
 	return value;
 }
 

@@ -33,6 +33,8 @@ public:
 class Dielectric : public BRDF
 {
 public:
-	Dielectric() : BRDF("Dielectric") {}
+	Dielectric() : BRDF("FresnelDielectric") {}
 	bool evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color);
+private:
+	//compute
 };

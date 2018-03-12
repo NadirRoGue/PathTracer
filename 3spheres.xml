@@ -11,8 +11,8 @@
 
 	<!-- Camera Description -->
 	<camera fieldOfView="45.0" nearClip="0.1" farClip="100.0">
-		<position x="2.0" y="2.0" z="5.0"/>
-		<target x="1.0" y="1.0" z="-1.0"/>
+		<position x="1.5" y="2.0" z="6.0"/>
+		<target x="1.5" y="0" z="-1.0"/>
 		<up x="0.0" y="1.0" z="0.0"/>
 	</camera>
 
@@ -20,9 +20,9 @@
 	<light_list>
 		<!-- Light Description, Color & Position -->
 		<light>
-			<color red="0.5" green="0.5" blue="0.5"/>
-			<position x="0.0" y="5.0" z="8.0"/>
-			<attenuation constant="0.10" linear="0.03" quadratic="0.00"/>
+			<color red="1.0" green="1.0" blue="1.0"/>
+			<position x="-5.0" y="3.0" z="0.5"/>
+			<attenuation constant="0.15" linear="0.03" quadratic="0.00"/>
 		</light>
 	</light_list>
 
@@ -37,7 +37,7 @@
 	
 		<material name="Mirror">
 			<texture filename=""/>
-			<diffuse red="0.9" green="0.9" blue="0.9"/>
+			<diffuse red="0.5" green="0.5" blue="0.5"/>
 			<specular red="1.0" green="1.0" blue="1.0" shininess="2.0"/>
 			<reflective red="1.0" green="1.0" blue="1.0"/>
 		</material>
@@ -59,10 +59,10 @@
 		<!-- Designed for reflexive plastic -->
 		<material name="White">
 			<texture filename=""/>
-			<diffuse red="1.0" green="1.0" blue="1.0"/>
-			<specular red="0.25" green="0.25" blue="0.25" shininess="20.0"/>
+			<diffuse red="1.0" green="0.0" blue="1.0"/>
+			<specular red="1.0" green="1.0" blue="1.0" shininess="20.0"/>
 			<transparent red="0.0" green="0.0" blue="0.0"/>
-			<reflective red="0.1" green="0.1" blue="0.1"/>
+			<reflective red="0.05" green="0.05" blue="0.05"/>
 			<refraction_index red="0.0" green="0.0" blue="0.0"/>
 		</material>
 		
@@ -72,7 +72,7 @@
 			<diffuse red="0.5" green="0.5" blue="0.5"/>
 			<specular red="1.0" green="1.0" blue="1.0" shininess="100.0"/>
 			<transparent red="0.0" green="0.0" blue="0.0"/>
-			<reflective red="0.6" green="0.6" blue="0.6"/>
+			<reflective red="1.0" green="1.0" blue="1.0"/>
 			<refraction_index red="0.0" green="0.0" blue="0.0"/>
 		</material>
 	</material_list>
@@ -86,7 +86,7 @@
 			<rotation x="0.0" y="0.0" z="0.0"/>
 			<position x="0.0" y="0.0" z="0.0"/>
 
-			<center x="-2.5" y="-0.5" z="-2.0"/>
+			<center x="-2.5" y="-1.0" z="-2.0"/>
 		</sphere>
 		
 		<sphere name="Sphere" material="White" radius="1.0">
@@ -95,7 +95,7 @@
 			<rotation x="0.0" y="0.0" z="0.0"/>
 			<position x="0.0" y="0.0" z="0.0"/>
 
-			<center x="0.0" y="-0.5" z="-2.0"/>
+			<center x="0.0" y="2.0" z="-2.0"/>
 		</sphere>
 		
 		<sphere name="Sphere" material="Red" radius="1.0">
@@ -104,16 +104,16 @@
 			<rotation x="0.0" y="0.0" z="0.0"/>
 			<position x="0.0" y="0.0" z="0.0"/>
 
-			<center x="2.5" y="-0.5" z="-2.0"/>
+			<center x="2.5" y="2.0" z="-2.0"/>
 		</sphere>
 		
 		<sphere name="Sphere" material="MetallicGray" radius="1.0">
-			<physicalMaterial name="ReflexivePlastic" />
+			<physicalMaterial name="Metallic" />
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="0.0" z="0.0"/>
 			<position x="0.0" y="0.0" z="0.0"/>
 
-			<center x="5.0" y="-0.5" z="-2.0"/>
+			<center x="5.0" y="2.0" z="-2.0"/>
 		</sphere>
 		
 		<triangle name="FloorTriangle1">
@@ -122,21 +122,21 @@
 			<position x="0.0" y="0.0" z="0.0"/>
 			<physicalMaterial name="Mirror" />
 
-			<vertex index="0" material="Mirror">
+			<vertex index="0" material="MetallicGray">
 				<position x="-20.0" y="-2.0" z="20.0"/>
 				<normal x="0.0" y="1.0" z="0.0"/>
 				<texture u="0.0" v="0.0"/>
 			</vertex>
 
-			<vertex index="1" material="Mirror">
+			<vertex index="1" material="MetallicGray">
 				<position x="20.0" y="-2.0" z="20.0"/>
 				<normal x="0.0" y="1.0" z="0.0"/>
 				<texture u="1.0" v="0.0"/>
 			</vertex>
 
-			<vertex index="2" material="Mirror">
+			<vertex index="2" material="MetallicGray">
 				<position x="-20.0" y="-2.0" z="-20.0"/>
-				<normal x="0.0" y="1.0" z="1.0"/>
+				<normal x="0.0" y="1.0" z="0.0"/>
 				<texture u="0.0" v="1.0"/>
 			</vertex>
 		</triangle>
@@ -147,21 +147,21 @@
 			<position x="0.0" y="0.0" z="0.0"/>
 			<physicalMaterial name="Mirror" />
 
-			<vertex index="0" material="Mirror">
+			<vertex index="0" material="MetallicGray">
 				<position x="20.0" y="-2.0" z="20.0"/>
 				<normal x="0.0" y="1.0" z="0.0"/>
 				<texture u="1.0" v="0.0"/>
 			</vertex>
 
-			<vertex index="1" material="Mirror">
+			<vertex index="1" material="MetallicGray">
 				<position x="20.0" y="-2.0" z="-20.0"/>
-				<normal x="0.0" y="1.0" z="1.0"/>
+				<normal x="0.0" y="1.0" z="0.0"/>
 				<texture u="1.0" v="1.0"/>
 			</vertex>
 			
-			<vertex index="2" material="Mirror">
+			<vertex index="2" material="MetallicGray">
 				<position x="-20.0" y="-2.0" z="-20.0"/>
-				<normal x="0.0" y="1.0" z="1.0"/>
+				<normal x="0.0" y="1.0" z="0.0"/>
 				<texture u="0.0" v="1.0"/>
 			</vertex>
 		</triangle>

@@ -6,7 +6,7 @@
 
 bool DiffuseLambertian::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color)
 {
-	color = hitInfo.hittedMaterial.diffuse;// / float(M_PI);
+	color = hitInfo.hittedMaterial.diffuse / float(M_PI);
 	
 	/*
 	if (incidentRay.getDepth() < MAX_BOUNCES)
@@ -56,6 +56,7 @@ bool SpecularPhong::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const V
 
 bool Dielectric::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color)
 {
+
 	return false;
 }
 
