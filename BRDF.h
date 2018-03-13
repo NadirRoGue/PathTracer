@@ -30,11 +30,19 @@ public:
 	bool evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color);
 };
 
-class Dielectric : public BRDF
+class DielectricTransmissionFresnel : public BRDF
 {
 public:
-	Dielectric() : BRDF("FresnelDielectric") {}
+	DielectricTransmissionFresnel() : BRDF("FresnelTransmission") {}
 	bool evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color);
-private:
-	//compute
 };
+
+class SpecularReflectanceFresnel : public BRDF
+{
+public:
+	SpecularReflectanceFresnel() :BRDF("FresnelReflectance") {}
+	bool evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color);
+};
+
+bool ComputeSnellRefractedDirection(float inIOR, float outIOR, Vector inDir, Vector outNormal, Vector & outDir);
+float ComputeFresnelRefractedEnergy(float iIOR, Vector inDir, float oIOR, Vector outDir, Vector outNormal);

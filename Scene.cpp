@@ -67,7 +67,7 @@ void SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 	if (distance > 0.0f)
 	{
 		outHitInfo.hitPoint = (o + (l * distance));
-		outHitInfo.hitNormal = outHitInfo.hitPoint - center;
+		outHitInfo.hitNormal = (outHitInfo.hitPoint - center) / radius;
 		outHitInfo.hitNormal.Normalize();
 		outHitInfo.hittedMaterial = *material;
 		outHitInfo.physicalMaterial = physicalMaterial;
@@ -145,7 +145,7 @@ SceneMaterial SceneTriangle::averageMaterials(float u, float v, float w, float f
 	SceneMaterial * a = material[0];
 	SceneMaterial * b = material[1];
 	SceneMaterial * c = material[2];
-
+	
 	// Diffuse average (with texture)
 	averaged.diffuse = (a->diffuse * a->GetTextureColor(finalU, finalV)) * u
 		+ (b->diffuse * b->GetTextureColor(finalU, finalV)) * v
@@ -203,6 +203,7 @@ void SceneModel::testIntersection(const Ray & ray, HitInfo & outInfo)
 			closer = outInfo;
 		}
 	}
+
 	outInfo = closer;
 }
 
@@ -358,7 +359,6 @@ bool Scene::Load (char *filename)
 				}
 				tempModel->name = CHECK_ATTR(tempObjectNode.getAttribute("name"));
 				std::string material = CHECK_ATTR(tempObjectNode.getAttribute("material"));
-				//tempModel->material = tempObjectNode.getAttribute("material");
 				tempModel->scale = ParseXYZ (tempObjectNode.getChildNode("scale"));
 				tempModel->rotation = ParseXYZ (tempObjectNode.getChildNode("rotation"));
 				tempModel->position = ParseXYZ (tempObjectNode.getChildNode("position"));
@@ -449,6 +449,8 @@ bool Scene::Load (char *filename)
 								tempTriangle.v[2] = 0.0f;
 							}
 
+							tempTriangle.physicalMaterial = tempModel->physicalMaterial;
+
 							tempModel->triangleList.push_back (tempTriangle);
 						}
 					}
@@ -524,6 +526,8 @@ bool Scene::Load (char *filename)
 							// Texture Coords
 							tempTriangle.u[2] = 0.0f;
 							tempTriangle.v[2] = 0.0f;
+
+							tempTriangle.physicalMaterial = tempModel->physicalMaterial;
 
 							tempModel->triangleList.push_back (tempTriangle);
 						}

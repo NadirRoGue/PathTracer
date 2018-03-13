@@ -22,6 +22,8 @@
 #include "Ray.h"
 #include "BRDF.h"
 
+#include "Threadpool.h"
+
 class CameraWrapper
 {
 private:
@@ -57,8 +59,8 @@ public:
 	Scene m_Scene;
 
 	// -- Constructors & Destructors --
-	RayTrace(void) { lambertian = new DiffuseLambertian(); metallic = new SpecularPhong(); fresnel = new Dielectric(); }
-	~RayTrace(void) { delete lambertian; delete metallic; delete fresnel; }
+	RayTrace(void) { lambertian = new DiffuseLambertian(); metallic = new SpecularPhong(); /*fresnel = new DielectricFresnel();*/ }
+	~RayTrace(void) { delete lambertian; delete metallic; /*delete fresnel;*/ }
 
 	void preRenderInit();
 
@@ -75,4 +77,15 @@ public:
    Vector Shade(const Ray & ray);
 
    Vector LightContribution(HitInfo & info, SceneLight * light);
+};
+
+class RaytracePixelTask : public Runnable
+{
+private:
+	RayTrace tracer;
+	unsigned int x;
+	unsigned int y;
+public:
+	RaytracePixelTask(RayTrace & tracer, unsigned int x, unsigned int y);
+	void run();
 };

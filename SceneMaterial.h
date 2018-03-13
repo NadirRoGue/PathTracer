@@ -52,9 +52,9 @@ public:
 			int textureY = (int)(v * tex->m_height);// only had to swap m_height and m_width for textureX and textureY 
 													// tex->Pixel (ROW, COLUMN, CHANNEL)
 
-			return Vector(tex->Pixel(textureY, textureX, 0),
-				tex->Pixel(textureY, textureX, 1),
-				tex->Pixel(textureY, textureX, 2)
+			return Vector(tex->Pixel(textureY, textureX, 0) / 255.0f,
+				tex->Pixel(textureY, textureX, 1) / 255.0f,
+				tex->Pixel(textureY, textureX, 2) / 255.0f
 			);
 		}
 

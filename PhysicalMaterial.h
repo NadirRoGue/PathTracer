@@ -86,8 +86,23 @@ public:
 	MetallicMaterial(std::string name = "Metallic") : PhysicalMaterial(name) { specularBRDF = new SpecularPhong(); }
 	~MetallicMaterial() { delete specularBRDF; }
 
-	bool computeSpecularRadiance(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & result);
+	//bool computeSpecularRadiance(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & result);
 	bool scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+};
+
+// =====================================================================================================
+
+class GlassMaterial : public PlasticMaterial
+{
+private:
+	BRDF * transmissive;
+	BRDF * reflective;
+public:
+	GlassMaterial(std::string name = "Glass") : PlasticMaterial(name) { transmissive = new DielectricTransmissionFresnel(); reflective = new SpecularReflectanceFresnel();  }
+	~GlassMaterial() { delete transmissive; delete reflective; }
+
+	bool scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	bool scatterTransmission(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
 };
 
 // =====================================================================================================

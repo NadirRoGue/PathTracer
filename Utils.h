@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+
 /*
 	Vector Class - A float triplet class with several vector-operation functions
 
@@ -407,6 +408,17 @@ inline float clampValue(float value, float min, float max)
 {
 	value = (value < min ? min : value > max ? max : value);
 	return value;
+}
+
+inline void fixGammut(Vector & color)
+{
+	float maxP = color.y > color.z ? color.y : color.z;
+	float maxV = color.x > maxP ? color.x : maxP;
+
+	if (maxV > 1.0f)
+	{
+		color = color / maxV;
+	}
 }
 
 #endif // UTILS_H

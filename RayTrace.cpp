@@ -212,11 +212,20 @@ Vector RayTrace::Shade(const Ray & ray)
 		// Ambient lighting
 		Lr = Lr + BRDF->computeAmbientRadiance(ray, info) * m_Scene.GetBackground().ambientLight;
 
+		//fixGammut(Lr);
+		if (Lr.Magnitude() > 3.0f)
+		{
+			Lr = Vector(1.0, 0.0, 0.0);
+		}
+
 		return Lr;
 	}
 	else
 	{
-		return Vector(m_Scene.GetBackground().color);
+		Vector topColor(m_Scene.GetBackground().color);
+		Vector bottomColor(0.8, 0.8, 1);
+		float alpha = 1.0f - ray.getDirection().y;
+		return bottomColor;// *alpha + topColor * (1.0f - alpha);
 	}
 }
 
@@ -288,4 +297,16 @@ void CameraWrapper::wrap(Camera & openglCam, unsigned int screenWidth, unsigned 
 Ray CameraWrapper::getRayForPixel(float t, float s)
 {
 	return Ray(COP, (LowerLeftCorner + horizontal * t + vertical * s - COP).Normalize());
+}
+
+// ==============================================================================
+
+RaytracePixelTask::RaytracePixelTask(RayTrace & tracer, unsigned int x, unsigned int y)
+	:tracer(tracer),x(x),y(y)
+{
+}
+
+void RaytracePixelTask::run()
+{
+
 }
