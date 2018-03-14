@@ -16,19 +16,21 @@ class ThreadPool
 {
 private:
 	std::list<std::thread> pool;
-	std::queue<Runnable *> tasks;
+	std::queue<std::unique_ptr<Runnable>> tasks;
 
 	std::mutex globalLock;
 	std::condition_variable monitor;
 
+	bool active;
+	unsigned int poolSize;
 public:
 	ThreadPool();
 	~ThreadPool();
 
-	void addTask(Runnable * runnable);
+	unsigned int getPoolSize() { return poolSize; }
+	bool isActive() { return active; }
+	void init();
+	void addTask(std::unique_ptr<Runnable> task);
 	void shutDown();
-
-private:
 	void pollTask();
-	
 };

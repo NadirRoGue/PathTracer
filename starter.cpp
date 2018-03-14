@@ -43,8 +43,8 @@
 	any dimension, but more importantly this should be set back
 	to the original resolution before you render your submissions.
 */
-const int Scene::WINDOW_WIDTH = 320;
-const int Scene::WINDOW_HEIGHT = 240;
+const int Scene::WINDOW_WIDTH = 512;// 320;
+const int Scene::WINDOW_HEIGHT = 512;// 240;
 
 bool Scene::supersample = false;
 bool Scene::montecarlo = false;
@@ -67,7 +67,7 @@ RayTrace g_RayTrace;
 NormalRenderer g_NormalRenderer;
 
 /* - RayTrace Buffer - */
-Vector g_ScreenBuffer[Scene::WINDOW_HEIGHT][Scene::WINDOW_WIDTH];
+Vector g_ScreenBuffer[Scene::WINDOW_HEIGHT][Scene::WINDOW_WIDTH]; 
 
 unsigned int g_X = 0, g_Y = 0;
 bool g_bRayTrace = false;
@@ -238,7 +238,7 @@ void menufunc(int value)
 		// Start the Ray Tracing
 		g_bRayTrace = true;
 		g_bRenderNormal = false;
-		g_RayTrace.preRenderInit();
+//		g_RayTrace.preRenderInit();
       Scene::supersample = false;
       Scene::montecarlo = false;
 		break;
@@ -246,7 +246,7 @@ void menufunc(int value)
 		// Start the Ray Tracing with supersampling
 		g_bRayTrace = true;
 		g_bRenderNormal = false;
-		g_RayTrace.preRenderInit();
+//		g_RayTrace.preRenderInit();
       Scene::supersample = true;
       Scene::montecarlo = false;
 		break;
@@ -254,7 +254,7 @@ void menufunc(int value)
 		// Start the Ray Tracing with Monte Carlo
 		g_bRayTrace = true;
 		g_bRenderNormal = false;
-		g_RayTrace.preRenderInit();
+//		g_RayTrace.preRenderInit();
       Scene::supersample = false;
       Scene::montecarlo = true;
 		break;
@@ -275,9 +275,22 @@ void doIdle()
 {
 	if (g_bRayTrace)
 	{
-		g_ScreenBuffer[g_Y][g_X] = g_RayTrace.CalculatePixel (g_X, g_Y);
+		g_RayTrace.Render();
+		Vector ** buffer = g_RayTrace.getBuffer();
+		
+		for (int i = 0; i < Scene::WINDOW_HEIGHT; i++)
+		{
+			
+			for (int j = 0; j < Scene::WINDOW_WIDTH; j++)
+			{
+				memcpy(&g_ScreenBuffer[i], buffer[i], sizeof(Vector) * Scene::WINDOW_WIDTH);
+			}
+		}
 
-		//printf ("Drawing %d, %d\n", g_X, g_Y);
+		g_bRayTrace = false;
+		glutPostRedisplay();
+		/*
+		g_ScreenBuffer[g_Y][g_X] = g_RayTrace.CalculatePixel (g_X, g_Y);
 
 		// Move to the next pixel
 		g_X++;
@@ -287,8 +300,8 @@ void doIdle()
 			g_X = 0;
 			g_Y++;
 
-			/* You can uncomment the next line 
-				to see the raytrace "in-action" */
+			//You can uncomment the next line 
+			//to see the raytrace "in-action"
 			//glutPostRedisplay();
 		}
 
@@ -297,7 +310,7 @@ void doIdle()
 		{
 			g_bRayTrace = false;
 			glutPostRedisplay ();
-		}
+		}*/
 	}
 	else
 	{
@@ -497,5 +510,6 @@ int main (int argc, char ** argv)
 	myinit();
 
 	glutMainLoop();
+
 	return 0;
 }

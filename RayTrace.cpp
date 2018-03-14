@@ -24,41 +24,150 @@
 #include "Scene.h"
 #include "RayTrace.h"
 
+#include <chrono>
 
 
-void RayTrace::preRenderInit()
+void RayTrace::releaseBuffer()
 {
-	wrapper.wrap(m_Scene.GetCamera(), Scene::WINDOW_WIDTH, Scene::WINDOW_HEIGHT);
+	if (buffer != NULL)
+	{
+		for (int i = 0; i < Scene::WINDOW_HEIGHT; i++)
+		{
+			delete[] buffer[i];
+		}
+
+		delete[] buffer;
+	}
 }
 
-// -- Main Functions --
-// - CalculatePixel - Returns the Computed Pixel for that screen coordinate
-Vector RayTrace::CalculatePixel(int screenX, int screenY)
+void RayTrace::Render()
 {
-	if ((screenX < 0 || screenX > Scene::WINDOW_WIDTH - 1) ||
-		(screenY < 0 || screenY > Scene::WINDOW_HEIGHT - 1))
+#ifdef _RT_MEASURE_PERFORMANCE
+	std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
+	completedPixels = 0;
+	screenSize = unsigned int(Scene::WINDOW_HEIGHT * Scene::WINDOW_WIDTH);
+	wrapper.wrap(m_Scene.GetCamera(), Scene::WINDOW_WIDTH, Scene::WINDOW_HEIGHT);
+
+
+	if (buffer == NULL)
 	{
-		// Off the screen, return black
-		return Vector(0.0f, 0.0f, 0.0f);
+		buffer = new Vector*[Scene::WINDOW_HEIGHT];
+		for (int i = 0; i < Scene::WINDOW_HEIGHT; i++)
+		{
+			buffer[i] = new Vector[Scene::WINDOW_WIDTH];
+		}
 	}
 
+#ifdef _RT_PROCESS_PER_PIXEL
+	std::unique_lock<std::mutex> lock(mut);
+	for (int i = 0; i < Scene::WINDOW_HEIGHT; i++)
+	{
+		for (int j = 0; j < Scene::WINDOW_WIDTH; j++)
+		{
+			pool.addTask(std::make_unique<RaytracePixelTask>(this, i, j));
+		}
+	}
+#else
+	std::unique_lock<std::mutex> lock(mut);
+
+	unsigned int xBatchSize = unsigned int(ceil(Scene::WINDOW_WIDTH / _RT_PROCESS_PIXEL_BATCH_SIZE_X));
+	unsigned int yBatchSize = unsigned int(ceil(Scene::WINDOW_HEIGHT / _RT_PROCESS_PIXEL_BATCH_SIZE_Y));
+#ifdef _RT_DEBUG
+	unsigned int numBatches = 0;
+#endif
+	for (unsigned int i = 0; i < yBatchSize; i++)
+	{
+		for (unsigned int j = 0; j < xBatchSize; j++)
+		{
+			unsigned int xBatchStart = j * _RT_PROCESS_PIXEL_BATCH_SIZE_X;
+			xBatchStart = min(xBatchStart, Scene::WINDOW_WIDTH - 1);
+
+			unsigned int xBatchLen = xBatchStart + _RT_PROCESS_PIXEL_BATCH_SIZE_X > Scene::WINDOW_WIDTH? 
+				Scene::WINDOW_WIDTH - xBatchStart : _RT_PROCESS_PIXEL_BATCH_SIZE_X;
+			
+			unsigned int yBatchStart = i * _RT_PROCESS_PIXEL_BATCH_SIZE_Y;
+			yBatchStart = min(yBatchStart, Scene::WINDOW_HEIGHT - 1);
+			
+			unsigned int yBatchLen = yBatchStart + _RT_PROCESS_PIXEL_BATCH_SIZE_Y > Scene::WINDOW_HEIGHT? 
+				Scene::WINDOW_HEIGHT - yBatchStart : _RT_PROCESS_PIXEL_BATCH_SIZE_Y;
+			
+			pool.addTask(std::make_unique<RaytraceBatchTask>(this, xBatchStart, xBatchLen, yBatchStart, yBatchLen));
+
+#if _RT_DEBUG
+			numBatches++;
+#endif
+		}
+	}
+
+#if _RT_DEBUG
+	std::cout << "Num batches: " << numBatches << std::endl;
+#endif
+	
+#endif
+
+	monitor.wait(lock);
+
+#ifdef _RT_MEASURE_PERFORMANCE
+	std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+	std::cout << "Elapsed milliseconds: " << duration << std::endl;
+#endif
+}
+
+#ifndef _RT_PROCESS_PER_PIXEL
+void RayTrace::notifyThreadBatchEnd(unsigned int completedPix)
+{
+	std::unique_lock<std::mutex> lock(mut);
+	completedPixels += completedPix;
+	if (completedPixels == (Scene::WINDOW_HEIGHT * Scene::WINDOW_WIDTH))
+	{
+		monitor.notify_one();
+	}
+	lock.unlock();
+}
+#endif
+
+void RayTrace::addPixel(unsigned int x, unsigned int y, Vector color)
+{
+	buffer[x][y] = color;
+#ifdef _RT_PROCESS_PER_PIXEL
+	std::unique_lock<std::mutex> lock(mut);
+	completedPixels++;
+	if (completedPixels == (Scene::WINDOW_HEIGHT * Scene::WINDOW_WIDTH))
+	{
+		monitor.notify_one();
+	}
+	lock.unlock();
+#endif
+}
+
+Vector ** RayTrace::getBuffer()
+{
+	return buffer;
+}
+
+Vector RayTrace::calculatePixel(int screenX, int screenY)
+{
 	if (m_Scene.supersample)
 	{
-		return DoSuperSamplingRayTrace(screenX, screenY);
+		return doSuperSamplingRayTrace(screenX, screenY);
 	}
 	else if(m_Scene.montecarlo)
 	{
-		return DoMonteCarloRayTrace(screenX, screenY);
+		return doMonteCarloRayTrace(screenX, screenY);
 	}
 	else
 	{
-		return DoRayTrace(screenX, screenY);
+		return doRayTrace(screenX, screenY);
 	}
 }
 
 // ===================================================================================
 
-Vector RayTrace::DoRayTrace(int screenX, int screenY)
+Vector RayTrace::doRayTrace(int screenX, int screenY)
 {
 	Scene &la_escena = m_Scene;
 	Camera &la_camara = la_escena.GetCamera();
@@ -68,12 +177,12 @@ Vector RayTrace::DoRayTrace(int screenX, int screenY)
 
 	Ray ray = wrapper.getRayForPixel(t, s);
 
-	return Shade(ray);
+	return shade(ray);
 }
 
 // ===================================================================================
 
-Vector RayTrace::DoSuperSamplingRayTrace(int screenX, int screenY)
+Vector RayTrace::doSuperSamplingRayTrace(int screenX, int screenY)
 {
 	Scene &la_escena = m_Scene;
 	Camera &la_camara = la_escena.GetCamera();
@@ -102,7 +211,7 @@ Vector RayTrace::DoSuperSamplingRayTrace(int screenX, int screenY)
 
 		ray = wrapper.getRayForPixel(t, s);
 
-		color = color + Shade(ray);
+		color = color + shade(ray);
 	}
 
 	return (color / float(samples));
@@ -111,14 +220,14 @@ Vector RayTrace::DoSuperSamplingRayTrace(int screenX, int screenY)
 // ===================================================================================
 
 
-Vector RayTrace::DoMonteCarloRayTrace(int screenX, int screenY)
+Vector RayTrace::doMonteCarloRayTrace(int screenX, int screenY)
 {
 	return Vector(1, 0, 1);
 }
 
 // ===================================================================================
 
-HitInfo RayTrace::Intersect(const Ray & ray)
+HitInfo RayTrace::intersect(const Ray & ray)
 {
 	HitInfo info;
 	HitInfo closer;
@@ -150,17 +259,17 @@ HitInfo RayTrace::Intersect(const Ray & ray)
 	return closer;
 }
 
-Vector RayTrace::Shade(const Ray & ray)
+Vector RayTrace::shade(const Ray & ray)
 {
 	HitInfo info;
 	
-	if (ray.getDepth() < MAX_BOUNCES && (info = Intersect(ray)).hit)
+	if (ray.getDepth() < _RT_MAX_BOUNCES && (info = intersect(ray)).hit)
 	{
 		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
 		Vector Lr;
 		Ray scattered;
 		Vector lightVector;
-		Vector lightContribution;
+		Vector I;
 
 		PhysicalMaterial * BRDF = PhysicalMaterialTable::getInstance().getMaterialByName(info.physicalMaterial);
 		if (BRDF == NULL)
@@ -176,37 +285,37 @@ Vector RayTrace::Shade(const Ray & ray)
 
 			lightVector = (sl->position - info.hitPoint).Normalize();
 
-			lightContribution = LightContribution(info, sl);
+			I = lightContribution(info, sl);
 
 			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
 
 			// Diffuse reflectance
 			if (BRDF->computeDiffuseRadiance(ray, info, lightVector, scattered, diffuseC))
 			{
-				diffuseC = diffuseC * Shade(scattered);
+				diffuseC = diffuseC * shade(scattered);
 			}
 
 			// Specular reflectance
 			if (BRDF->computeSpecularRadiance(ray, info, lightVector, scattered, specularC))
 			{
-				specularC = specularC * Shade(scattered);
+				specularC = specularC * shade(scattered);
 			}
 
-			Lr = Lr + (lightContribution * (diffuseC + specularC) * cosValue);
+			Lr = Lr + (I * (diffuseC + specularC) * cosValue);
 		}
 		
 		// Specular reflection
 		Vector reflexion;
 		if (BRDF->scatterReflexion(ray, info, scattered, reflexion))
 		{
-			Lr = Lr + (reflexion * Shade(scattered));
+			Lr = Lr + (reflexion * shade(scattered));
 		}
 
 		// Refraction
 		Vector refracted;
 		if (BRDF->scatterTransmission(ray, info, scattered, refracted))
 		{
-			Lr = Lr + (refracted * Shade(scattered));
+			Lr = Lr + (refracted * shade(scattered));
 		}
 
 		// Ambient lighting
@@ -229,7 +338,7 @@ Vector RayTrace::Shade(const Ray & ray)
 	}
 }
 
-Vector RayTrace::LightContribution(HitInfo & info, SceneLight * light)
+Vector RayTrace::lightContribution(HitInfo & info, SceneLight * light)
 {
 	Vector lightVector = light->position - info.hitPoint;
 	float distToLight = lightVector.Magnitude();
@@ -238,7 +347,7 @@ Vector RayTrace::LightContribution(HitInfo & info, SceneLight * light)
 	const unsigned int sceneObjectCount = m_Scene.GetNumObjects();
 
 	lightVector.Normalize();
-	Ray lightVisibilityTest(info.hitPoint + lightVector * PRECISSION_EPSILON, lightVector);
+	Ray lightVisibilityTest(info.hitPoint + lightVector * _RT_BIAS, lightVector);
 	HitInfo visibilityInfo;
 	bool visible = true;
 	for (unsigned int i = 0; i < sceneObjectCount && visible; i++)
@@ -301,12 +410,32 @@ Ray CameraWrapper::getRayForPixel(float t, float s)
 
 // ==============================================================================
 
-RaytracePixelTask::RaytracePixelTask(RayTrace & tracer, unsigned int x, unsigned int y)
+#ifdef _RT_PROCESS_PER_PIXEL
+RaytracePixelTask::RaytracePixelTask(RayTrace * tracer, unsigned int x, unsigned int y)
 	:tracer(tracer),x(x),y(y)
 {
 }
 
 void RaytracePixelTask::run()
 {
-
+	tracer->addPixel(x, y, tracer->calculatePixel(y, x));
 }
+
+#else
+
+void RaytraceBatchTask::run()
+{
+	unsigned int xEnd = xStart + xLen;
+	unsigned int yEnd = yStart + yLen;
+
+	for (unsigned int i = xStart; i < xEnd; i++)
+	{
+		for (unsigned int j = yStart; j < yEnd; j++)
+		{
+			tracer->addPixel(i, j, tracer->calculatePixel(j, i));
+		}
+	}
+
+	tracer->notifyThreadBatchEnd(xLen * yLen);
+}
+#endif

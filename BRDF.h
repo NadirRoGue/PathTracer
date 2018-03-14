@@ -45,4 +45,6 @@ public:
 };
 
 bool ComputeSnellRefractedDirection(float inIOR, float outIOR, Vector inDir, Vector outNormal, Vector & outDir);
-float ComputeFresnelRefractedEnergy(float iIOR, Vector inDir, float oIOR, Vector outDir, Vector outNormal);
+float ComputeFresnelRefractedEnergy(float iIOR, Vector & inDir, Vector & inNormal, float oIOR, Vector & outDir, Vector & outNormal);
+
+bool AttemptToTransmitRay(const Ray & incidentRay, HitInfo & hitInfo, Vector & refracted, float &transmittedPercentage);

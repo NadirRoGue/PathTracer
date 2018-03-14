@@ -20,9 +20,10 @@
 
 #include "pic.h"
 #include "Ray.h"
-#include "BRDF.h"
 
 #include "Threadpool.h"
+
+#include "Config.h"
 
 class CameraWrapper
 {
@@ -51,41 +52,72 @@ class RayTrace
 private:
 	CameraWrapper wrapper;
 
-	BRDF * lambertian;
-	BRDF * metallic;
-	BRDF * fresnel;
+	Vector ** buffer;
+	unsigned int completedPixels;
+
+	ThreadPool pool;
+
+	unsigned int screenSize;
+
+	std::mutex mut;
+	std::condition_variable monitor;
+
 public:
 	/* - Scene Variable for the Scene Definition - */
 	Scene m_Scene;
 
 	// -- Constructors & Destructors --
-	RayTrace(void) { lambertian = new DiffuseLambertian(); metallic = new SpecularPhong(); /*fresnel = new DielectricFresnel();*/ }
-	~RayTrace(void) { delete lambertian; delete metallic; /*delete fresnel;*/ }
+	RayTrace(void):buffer(NULL),completedPixels(0) {  }
+	~RayTrace(void) { releaseBuffer(); }
 
-	void preRenderInit();
+	void Render();
+	Vector ** getBuffer();
 
-	// -- Main Functions --
-	// - CalculatePixel - Returns the Computed Pixel for that screen coordinate
-   Vector CalculatePixel (int screenX, int screenY);
+#ifndef _RT_PROCESS_PER_PIXEL
+	void notifyThreadBatchEnd(unsigned int pix);
+#endif
+	void addPixel(unsigned int x, unsigned int y, Vector color);
 
-   Vector DoRayTrace(int screenX, int screenY);
-   Vector DoSuperSamplingRayTrace(int screenX, int screenY);
-   Vector DoMonteCarloRayTrace(int screenX, int screenY);
+	Vector calculatePixel (int screenX, int screenY);
 
-   HitInfo Intersect(const Ray & ray);
+    Vector doRayTrace(int screenX, int screenY);
+    Vector doSuperSamplingRayTrace(int screenX, int screenY);
+    Vector doMonteCarloRayTrace(int screenX, int screenY);
 
-   Vector Shade(const Ray & ray);
+    HitInfo intersect(const Ray & ray);
 
-   Vector LightContribution(HitInfo & info, SceneLight * light);
+    Vector shade(const Ray & ray);
+
+    Vector lightContribution(HitInfo & info, SceneLight * light);
+private:
+	void releaseBuffer();
 };
 
+#ifdef _RT_PROCESS_PER_PIXEL
 class RaytracePixelTask : public Runnable
 {
 private:
-	RayTrace tracer;
+	RayTrace * tracer;
 	unsigned int x;
 	unsigned int y;
 public:
-	RaytracePixelTask(RayTrace & tracer, unsigned int x, unsigned int y);
+	RaytracePixelTask(RayTrace * tracer, unsigned int x, unsigned int y);
 	void run();
 };
+
+#else
+class RaytraceBatchTask : public Runnable
+{
+private:
+	RayTrace * tracer;
+	unsigned int xStart;
+	unsigned int yStart;
+	unsigned int xLen;
+	unsigned int yLen;
+
+public:
+	RaytraceBatchTask(RayTrace * tracer, unsigned int xStart, unsigned int xLen, unsigned int yStart, unsigned int yLen)
+		:tracer(tracer),xStart(xStart), xLen(xLen), yStart(yStart), yLen(yLen) {}
+	void run();
+};
+#endif

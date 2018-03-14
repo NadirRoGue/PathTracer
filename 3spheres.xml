@@ -49,6 +49,12 @@
 			<diffuse red="0.5" green="0.5" blue="0.5"/>
 			<specular red="0.0" green="0.0" blue="0.0" shininess="2.0"/>
 		</material>
+		
+		<material name="MatteGreen">
+			<texture filename=""/>
+			<diffuse red="0.1" green="0.6" blue="0.1"/>
+			<specular red="0.0" green="0.0" blue="0.0" shininess="2.0"/>
+		</material>
 
 		<!-- Designed for plastic -->
 		<material name="Red">
@@ -115,6 +121,15 @@
 			<position x="0.0" y="0.0" z="0.0"/>
 
 			<center x="2.5" y="0.5" z="0.0"/>
+		</sphere>
+		
+		<sphere name="Sphere" material="MatteGreen" radius="1.0">
+			<physicalMaterial name="Matte" />
+			<scale x="1.0" y="1.0" z="1.0"/>
+			<rotation x="0.0" y="0.0" z="0.0"/>
+			<position x="0.0" y="0.0" z="0.0"/>
+
+			<center x="2.5" y="0.5" z="-5.0"/>
 		</sphere>
 		
 		<sphere name="Sphere" material="MetallicGray" radius="1.0">

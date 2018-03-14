@@ -1,15 +1,23 @@
 
 #include "Threadpool.h"
 
+#include <iostream>
+
 ThreadPool::ThreadPool()
 {
-	unsigned maxThreads = std::thread::hardware_concurrency();
-	maxThreads = maxThreads < 1 ? 1 : maxThreads;
+	init();
+	std::cout << "ThreadPool: Using " << poolSize << " thread(s)" << std::endl;
+}
 
-	for (unsigned i = 0; i < maxThreads; i++)
+void ThreadPool::init()
+{
+	active = true;
+	poolSize = std::thread::hardware_concurrency();
+	poolSize = poolSize < 1 ? 1 : poolSize;
+	for (unsigned i = 0; i < poolSize; i++)
 	{
-		std::thread t(&ThreadPool::pollTask, *this);
-		pool.push_back(t);
+		std::thread t(&ThreadPool::pollTask, this);
+		pool.push_back(std::move(t));
 	}
 }
 
@@ -20,28 +28,45 @@ ThreadPool::~ThreadPool()
 
 void ThreadPool::shutDown()
 {
-
+	active = false;
+	std::unique_lock<std::mutex> lock(globalLock);
+	monitor.notify_all();
+	lock.unlock();
+	for (auto & thread : pool)
+	{
+		thread.join();
+	}
 }
 
-void ThreadPool::addTask(Runnable * task)
+void ThreadPool::addTask(std::unique_ptr<Runnable> task)
 {
 	std::unique_lock<std::mutex> lock(globalLock);
-	tasks.push(task);
+	tasks.push(std::move(task));
+	lock.unlock();
 	monitor.notify_one();
 }
 
 void ThreadPool::pollTask()
 {
-	std::unique_lock<std::mutex> lock(globalLock);
-	while (tasks.empty())
+	while (active)
 	{
-		monitor.wait(lock);
+		std::unique_lock<std::mutex> lock(globalLock);
+		while (tasks.empty() && active)
+		{
+			monitor.wait(lock);
+		}
+
+		if (!tasks.empty())
+		{
+			std::unique_ptr<Runnable> task = std::move(tasks.front());
+			tasks.pop();
+			lock.unlock();
+
+			task->run();
+		}
+		else
+		{
+			lock.unlock();
+		}
 	}
-
-	Runnable * task = tasks.front();
-	tasks.pop();
-
-	task->run();
-
-	delete task;
 }

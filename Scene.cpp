@@ -16,6 +16,7 @@
 #endif
 
 #include "Scene.h"
+#include "Config.h"
 
 // ==========================================================
 
@@ -123,7 +124,7 @@ void SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 
 			float total = a + b + c;
 
-			if (abs(total - 1.0f) < PRECISSION_EPSILON)
+			if (abs(total - 1.0f) < _RT_BIAS)
 			{
 				outHitInfo.hitPoint = hittedPoint;
 				outHitInfo.hitNormal = (normal[0] * a + normal[1] * b + normal[2] * c).Normalize();

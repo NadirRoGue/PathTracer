@@ -1,11 +1,8 @@
 #pragma once
 
 #include "Utils.h"
-
 #include "SceneMaterial.h"
 
-#define PRECISSION_EPSILON 0.00005f
-#define MAX_BOUNCES 4
 
 struct HitInfo
 {
@@ -33,6 +30,5 @@ public:
 
 	const Vector & getOrigin() const { return origin; }
 	const Vector & getDirection() const { return direction; }
-	const unsigned int getDepth() const { return depth; };
-	//Vector getPoint(float offset) { return origin + direction * offset; }
+	const unsigned int getDepth() const { return depth; }
 };

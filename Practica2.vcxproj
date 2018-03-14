@@ -100,6 +100,7 @@
   <ItemGroup>
     <ClInclude Include="3ds.h" />
     <ClInclude Include="BRDF.h" />
+    <ClInclude Include="Config.h" />
     <ClInclude Include="PhysicalMaterial.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="NormalRenderer.h" />

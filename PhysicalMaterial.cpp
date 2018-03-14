@@ -1,6 +1,6 @@
 #include "PhysicalMaterial.h"
 
-#include <iostream>
+#include "Config.h"
 
 // =======================================================================================
 // Matte
@@ -33,7 +33,7 @@ bool ReflexivePlasticMaterial::scatterReflexion(const Ray & incidentRay, HitInfo
 {
 	Vector invRayDir(incidentRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal).Normalize();
-	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * PRECISSION_EPSILON, reflectedDir, incidentRay.getDepth() + 1);
+	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
 
 	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0f, 1.0f);
 	result = hitInfo.hittedMaterial.reflective;// *factor;
@@ -47,7 +47,7 @@ bool MirrorMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo
 {
 	Vector invRayDir(incidentRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal).Normalize();
-	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * PRECISSION_EPSILON, reflectedDir, incidentRay.getDepth() + 1);
+	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
 
 	float factor = clampValue(reflectedDir.Dot(hitInfo.hitNormal), 0.0f, 1.0f);
 	result = hitInfo.hittedMaterial.reflective * factor;
@@ -61,7 +61,7 @@ bool MetallicMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitIn
 {
 	Vector invRayDir(incidentRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
-	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * PRECISSION_EPSILON, reflectedDir, incidentRay.getDepth() + 1);
+	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
 
 	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
 	result = hitInfo.hittedMaterial.diffuse;
