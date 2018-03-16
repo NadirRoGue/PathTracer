@@ -7,33 +7,30 @@
 
 Vector MatteMaterial::computeAmbientRadiance(const Ray & incidentRay, HitInfo & hitInfo)
 {
-	Vector result;
-	ambientBRDF->evaluate(incidentRay, hitInfo, Vector(), Ray(), result);
-
-	return result;
+	return hitInfo.hittedMaterial.diffuse;
 }
 
-bool MatteMaterial::computeDiffuseRadiance(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & result)
+bool MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	return diffuseBRDF->evaluate(incidentRay, hitInfo, lightVector, scatteredRay, result);
+	return diffuseBRDF->value(hitInfo, scatteredRay, result);
 }
 
 // =======================================================================================
 // Plastic
 
-bool PlasticMaterial::computeSpecularRadiance(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & result)
+bool PlasticMaterial::computeSpecularRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	return specularBRDF->evaluate(incidentRay, hitInfo, lightVector, scatteredRay, result);
+	return specularBRDF->value(hitInfo, scatteredRay, result);
 }
 
 // ======================================================================================
 // Plastic with reflexions
 
-bool ReflexivePlasticMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+bool ReflexivePlasticMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	Vector invRayDir(incidentRay.getDirection());
+	Vector invRayDir(hitInfo.inRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal).Normalize();
-	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
+	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 
 	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0f, 1.0f);
 	result = hitInfo.hittedMaterial.reflective;// *factor;
@@ -43,11 +40,11 @@ bool ReflexivePlasticMaterial::scatterReflexion(const Ray & incidentRay, HitInfo
 // ======================================================================================
 // Mirror
 
-bool MirrorMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+bool MirrorMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	Vector invRayDir(incidentRay.getDirection());
+	Vector invRayDir(hitInfo.inRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal).Normalize();
-	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
+	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 
 	float factor = clampValue(reflectedDir.Dot(hitInfo.hitNormal), 0.0f, 1.0f);
 	result = hitInfo.hittedMaterial.reflective * factor;
@@ -57,11 +54,11 @@ bool MirrorMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo
 
 // ======================================================================================
 
-bool MetallicMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+bool MetallicMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	Vector invRayDir(incidentRay.getDirection());
+	Vector invRayDir(hitInfo.inRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
-	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
+	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 
 	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
 	result = hitInfo.hittedMaterial.diffuse;
@@ -71,14 +68,14 @@ bool MetallicMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitIn
 
 // ======================================================================================
 
-bool GlassMaterial::scatterReflexion(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+bool GlassMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	return reflective->evaluate(incidentRay, hitInfo, Vector(), scatteredRay, result);
+	return reflective->value(hitInfo, scatteredRay, result);
 }
 
-bool GlassMaterial::scatterTransmission(const Ray & incidentRay, HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+bool GlassMaterial::scatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	return transmissive->evaluate(incidentRay, hitInfo, Vector(), scatteredRay, result);
+	return transmissive->value(hitInfo, scatteredRay, result);
 }
 
 // ======================================================================================

@@ -72,6 +72,7 @@ void SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 		outHitInfo.hitNormal.Normalize();
 		outHitInfo.hittedMaterial = *material;
 		outHitInfo.physicalMaterial = physicalMaterial;
+		outHitInfo.inRay = ray;
 		outHitInfo.hit = true;
 	}
 }
@@ -134,6 +135,7 @@ void SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 				outHitInfo.v -= floor(outHitInfo.v);
 				outHitInfo.hittedMaterial = averageMaterials(a, b, c, outHitInfo.u, outHitInfo.v);
 				outHitInfo.physicalMaterial = physicalMaterial;
+				outHitInfo.inRay = ray;
 				outHitInfo.hit = true;
 			}
 		}

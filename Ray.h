@@ -3,17 +3,6 @@
 #include "Utils.h"
 #include "SceneMaterial.h"
 
-
-struct HitInfo
-{
-	Vector hitPoint;
-	Vector hitNormal;
-	bool hit;
-	SceneMaterial hittedMaterial;
-	std::string physicalMaterial;
-	float u, v;
-} typedef HitInfo;
-
 class Ray
 {
 private:
@@ -32,3 +21,15 @@ public:
 	const Vector & getDirection() const { return direction; }
 	const unsigned int getDepth() const { return depth; }
 };
+
+struct HitInfo
+{
+	Ray inRay;
+	Vector lightVector;
+	Vector hitPoint;
+	Vector hitNormal;
+	bool hit;
+	SceneMaterial hittedMaterial;
+	std::string physicalMaterial;
+	float u, v;
+} typedef HitInfo;

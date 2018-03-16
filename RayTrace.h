@@ -17,41 +17,15 @@
 #include <stdlib.h>
 
 #include "Utils.h"
-
 #include "pic.h"
 #include "Ray.h"
-
 #include "Threadpool.h"
-
 #include "Config.h"
+#include "Tracer.h"
 
-class CameraWrapper
-{
-private:
-	Vector COP;
-	Vector LowerLeftCorner;
-	Vector horizontal;
-	Vector vertical;
-
-public:
-	CameraWrapper();
-
-	void wrap(Camera & openglCam, unsigned int screenWidth, unsigned int screenHeight);
-
-	Ray getRayForPixel(float t, float s);
-};
-
-
-/*
-	RayTrace Class - The class containing the function you will need to implement
-
-	This is the class with the function you need to implement
-*/
 class RayTrace
 {
 private:
-	CameraWrapper wrapper;
-
 	Vector ** buffer;
 	unsigned int completedPixels;
 
@@ -62,6 +36,7 @@ private:
 	std::mutex mut;
 	std::condition_variable monitor;
 
+	Tracer * tracer;
 public:
 	/* - Scene Variable for the Scene Definition - */
 	Scene m_Scene;
@@ -72,25 +47,17 @@ public:
 
 	void Render();
 	Vector ** getBuffer();
+	void addPixel(unsigned int x, unsigned int y, Vector color);
+	Vector calculatePixel(int screenX, int screenY);
 
 #ifndef _RT_PROCESS_PER_PIXEL
 	void notifyThreadBatchEnd(unsigned int pix);
 #endif
-	void addPixel(unsigned int x, unsigned int y, Vector color);
 
-	Vector calculatePixel (int screenX, int screenY);
-
-    Vector doRayTrace(int screenX, int screenY);
-    Vector doSuperSamplingRayTrace(int screenX, int screenY);
-    Vector doMonteCarloRayTrace(int screenX, int screenY);
-
-    HitInfo intersect(const Ray & ray);
-
-    Vector shade(const Ray & ray);
-
-    Vector lightContribution(HitInfo & info, SceneLight * light);
 private:
+	void initializeBuffer();
 	void releaseBuffer();
+	void initializeTracer();
 };
 
 #ifdef _RT_PROCESS_PER_PIXEL
@@ -101,7 +68,7 @@ private:
 	unsigned int x;
 	unsigned int y;
 public:
-	RaytracePixelTask(RayTrace * tracer, unsigned int x, unsigned int y);
+	RaytracePixelTask(RayTrace * tracer, unsigned int x, unsigned int y) :tracer(tracer), x(x), y(y) {}
 	void run();
 };
 

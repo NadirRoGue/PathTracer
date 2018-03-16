@@ -6,47 +6,37 @@
 
 #include "Config.h"
 
-bool DiffuseLambertian::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color)
+// BRDF
+bool DiffuseLambertian::value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color)
 {
-	color = hitInfo.hittedMaterial.diffuse / float(M_PI);
-	
-	/*
-	if (incidentRay.getDepth() < MAX_BOUNCES)
-	{
-		Vector scatteredDir = hitInfo.hitNormal + randomPointInSphere();
-		scatteredRay = Ray(hitInfo.hitPoint + scatteredDir * PRECISSION_EPSILON, scatteredDir);
-		return true;
-	}
-	*/
-
+	color = hitInfo.hittedMaterial.diffuse / M_PI;
 	return false;
 }
 
-// From Ray Tracing in One Weekend
-Vector DiffuseLambertian::randomPointInSphere()
+// Indirect lighting BRDF (computes scattered rays and pdf as well as color)
+bool DiffuseLambertian::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf)
 {
-	srand(unsigned int(time(NULL)));
-	Vector result;
-	Vector fix(1.0f, 1.0f, 1.0f);
-	do
-	{
-		float xRand = float(rand() % 1000) / 1000.0f;
-		float yRand = float(rand() % 1000) / 1000.0f;
-		float zRand = float(rand() % 1000) / 1000.0f;
-		result = Vector(xRand, yRand, zRand) * 2.0f - fix;
-	} while (result.Dot(result) >= 1.0f);
+	Vector zVector = hitInfo.hitNormal;
+	Vector yVector, xVector;
+	ComputeOrthoNormalBasis(zVector, yVector, xVector);
 
-	return result;
+	Vector sample = sampler->sampleHemiSphere();
+	Vector scatteredDir = (xVector * sample.x + yVector * sample.y + zVector * sample.z).Normalize();
 	
+	scatteredRay = Ray(hitInfo.hitPoint + zVector * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
+	color = hitInfo.hittedMaterial.diffuse;
+	pdf = zVector.Dot(scatteredDir);
+
+	return pdf > 0.0f;
 }
 
 // ======================================================================================================================
 
-bool SpecularPhong::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color)
+bool SpecularPhong::value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color)
 {
-	Vector reflected = lightVector.reflect(hitInfo.hitNormal);
+	Vector reflected = hitInfo.lightVector.reflect(hitInfo.hitNormal);
 	reflected = reflected * -1.0f;
-	Vector invRayDir(incidentRay.getDirection());
+	Vector invRayDir(hitInfo.inRay.getDirection());
 	invRayDir = invRayDir * -1.0f;
 	float dotRV = clampValue(reflected.Dot(invRayDir), 0.0f, 1.0f);
 
@@ -58,59 +48,42 @@ bool SpecularPhong::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const V
 	return false;
 }
 
-// ======================================================================================================================
-
-bool DielectricTransmissionFresnel::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color)
+bool SpecularPhong::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf)
 {
-	Vector refracted;
-	float percentage;
-
-	if (AttemptToTransmitRay(incidentRay, hitInfo, refracted, percentage))
-	{
-		color = hitInfo.hittedMaterial.transparent * percentage;
-		scatteredRay = Ray(hitInfo.hitPoint + refracted * _RT_BIAS, refracted, incidentRay.getDepth() + 1);
-		return true;
-	}
-
 	return false;
-	/*
-	bool entering = incidentRay.getDirection().Dot(hitInfo.hitNormal) < 0.0f;
-	if (entering)
-	{
-		inIOR = 1.0f;
-		outIOR = hitInfo.hittedMaterial.refraction_index.x; // a vector, wtf?
-		outNormal = hitInfo.hitNormal;
-	}
-	else
-	{
-		inIOR = hitInfo.hittedMaterial.refraction_index.x;
-		outIOR = 1.0f;
-		outNormal = hitInfo.hitNormal * -1.0f;
-	}
-
-	if (ComputeSnellRefractedDirection(inIOR, outIOR, incidentRay.getDirection(), outNormal, refracted))
-	{
-		float refractedPercentage = ComputeFresnelRefractedEnergy(inIOR, incidentRay.getDirection(), outIOR, refracted, outNormal);
-		if(refractedPercentage > 0.0f)
-		{
-			color = hitInfo.hittedMaterial.transparent * refractedPercentage;
-			scatteredRay = Ray(hitInfo.hitPoint + refracted * _RT_BIAS, refracted, incidentRay.getDepth() + 1);
-			return true;
-		}
-	}
-
-	return false;*/
 }
 
 // ======================================================================================================================
 
-bool SpecularReflectanceFresnel::evaluate(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & color)
+bool DielectricTransmissionFresnel::value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color)
+{
+	Vector refracted;
+	float percentage;
+
+	if (AttemptToTransmitRay(hitInfo.inRay, hitInfo, refracted, percentage))
+	{
+		color = hitInfo.hittedMaterial.transparent * percentage;
+		scatteredRay = Ray(hitInfo.hitPoint + refracted * _RT_BIAS, refracted, hitInfo.inRay.getDepth() + 1);
+		return true;
+	}
+
+	return false;
+}
+
+bool DielectricTransmissionFresnel::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf)
+{
+	return false;
+}
+
+// ======================================================================================================================
+
+bool SpecularReflectanceFresnel::value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color)
 {
 	Vector refracted;
 	float reflectPercentage = 1.0f;
 	float percentage;
 
-	if (AttemptToTransmitRay(incidentRay, hitInfo, refracted, percentage))
+	if (AttemptToTransmitRay(hitInfo.inRay, hitInfo, refracted, percentage))
 	{
 		reflectPercentage -= percentage;
 	}
@@ -120,52 +93,19 @@ bool SpecularReflectanceFresnel::evaluate(const Ray & incidentRay, HitInfo & hit
 		return false;
 	}
 
-	Vector invRayDir(incidentRay.getDirection());
+	Vector invRayDir(hitInfo.inRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
-	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
+	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 
 	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
 	color = hitInfo.hittedMaterial.specular * reflectPercentage;
 
 	return factor > 0.0f;
+}
 
-	/*
-
-	// By default we reflect all energy. If we manage to refract, we will substract the refrected percentage
-	float reflectedPercentage = 1.0f;
-	if (hitInfo.hittedMaterial.refraction_index.x > 0.0f)
-	{
-		bool entering = incidentRay.getDirection().Dot(hitInfo.hitNormal) < 0.0f;
-		if (entering)
-		{
-			inIOR = 1.0f;
-			outIOR = hitInfo.hittedMaterial.refraction_index.x; // a vector, wtf?
-			inNormal = hitInfo.hitNormal * -1.0f;
-			outNormal = hitInfo.hitNormal;
-		}
-		else
-		{
-			inIOR = hitInfo.hittedMaterial.refraction_index.x;
-			outIOR = 1.0f;
-			inNormal = hitInfo.hitNormal;
-			outNormal = hitInfo.hitNormal * -1.0f;
-		}
-
-		if (ComputeSnellRefractedDirection(inIOR, outIOR, incidentRay.getDirection(), outNormal, refracted))
-		{
-			// Substract refracted energy percentage
-			reflectedPercentage -= ComputeFresnelRefractedEnergy(inIOR, incidentRay.getDirection(), inNormal, outIOR, refracted, outNormal);
-		}
-	}
-
-	Vector invRayDir(incidentRay.getDirection());
-	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
-	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, incidentRay.getDepth() + 1);
-
-	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
-	color = hitInfo.hittedMaterial.specular * reflectedPercentage;
-
-	return factor > 0.0f;*/
+bool SpecularReflectanceFresnel::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf)
+{
+	return false;
 }
 
 // ======================================================================================================================
@@ -204,7 +144,10 @@ bool AttemptToTransmitRay(const Ray & incidentRay, HitInfo & hitInfo, Vector & r
 	Vector inNormal, outNormal;
 	float inIOR, outIOR;
 
-	bool entering = incidentRay.getDirection().Dot(hitInfo.hitNormal) < 0.0f;
+	//Vector d(incidentRay.getDirection());
+	//d = d * -1.0f;
+	bool entering = (incidentRay.getDirection()).Dot(hitInfo.hitNormal) < 0.0f;
+	//bool entering = d.Dot(hitInfo.hitNormal) > 0.0f;
 	if (entering)
 	{
 		inIOR = 1.0f;
@@ -227,4 +170,10 @@ bool AttemptToTransmitRay(const Ray & incidentRay, HitInfo & hitInfo, Vector & r
 	}
 
 	return false;
+}
+
+void ComputeOrthoNormalBasis(Vector zVector, Vector &yVector, Vector &xVector)
+{
+	yVector = Vector(0.1, 1.0, 1.0).Cross(zVector).Normalize();
+	xVector = yVector.Cross(zVector).Normalize();
 }
