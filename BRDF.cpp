@@ -9,7 +9,7 @@
 // BRDF
 bool DiffuseLambertian::value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color)
 {
-	color = hitInfo.hittedMaterial.diffuse / M_PI;
+	color = hitInfo.hittedMaterial.diffuse / float(M_PI);
 	return false;
 }
 
@@ -50,6 +50,7 @@ bool SpecularPhong::value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color)
 
 bool SpecularPhong::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf)
 {
+	// No specular highlights with indirect lighting
 	return false;
 }
 
@@ -62,6 +63,7 @@ bool DielectricTransmissionFresnel::value(HitInfo & hitInfo, Ray & scatteredRay,
 
 	if (AttemptToTransmitRay(hitInfo.inRay, hitInfo, refracted, percentage))
 	{
+		percentage = 1.0f - percentage;
 		color = hitInfo.hittedMaterial.transparent * percentage;
 		scatteredRay = Ray(hitInfo.hitPoint + refracted * _RT_BIAS, refracted, hitInfo.inRay.getDepth() + 1);
 		return true;
@@ -72,6 +74,17 @@ bool DielectricTransmissionFresnel::value(HitInfo & hitInfo, Ray & scatteredRay,
 
 bool DielectricTransmissionFresnel::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf)
 {
+	Vector refracted;
+	float percentage;
+
+	if (AttemptToTransmitRay(hitInfo.inRay, hitInfo, refracted, percentage))
+	{
+		percentage = 1.0f - percentage;
+		pdf = percentage;
+		color = hitInfo.hittedMaterial.transparent * percentage;
+		scatteredRay = Ray(hitInfo.hitPoint + refracted * _RT_BIAS, refracted, hitInfo.inRay.getDepth() + 1);
+		return true;
+	}
 	return false;
 }
 
@@ -81,12 +94,8 @@ bool SpecularReflectanceFresnel::value(HitInfo & hitInfo, Ray & scatteredRay, Ve
 {
 	Vector refracted;
 	float reflectPercentage = 1.0f;
-	float percentage;
-
-	if (AttemptToTransmitRay(hitInfo.inRay, hitInfo, refracted, percentage))
-	{
-		reflectPercentage -= percentage;
-	}
+	
+	AttemptToTransmitRay(hitInfo.inRay, hitInfo, refracted, reflectPercentage);
 
 	if (reflectPercentage <= 0.0f)
 	{
@@ -97,15 +106,34 @@ bool SpecularReflectanceFresnel::value(HitInfo & hitInfo, Ray & scatteredRay, Ve
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
 	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 
-	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
-	color = hitInfo.hittedMaterial.specular * reflectPercentage;
+	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0f, 1.0f);
+	color = hitInfo.hittedMaterial.reflective * reflectPercentage;
 
 	return factor > 0.0f;
 }
 
 bool SpecularReflectanceFresnel::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf)
 {
-	return false;
+	Vector refracted;
+	float reflectPercentage = 1.0f;
+	
+	AttemptToTransmitRay(hitInfo.inRay, hitInfo, refracted, reflectPercentage);
+
+	if (reflectPercentage <= 0.0f)
+	{
+		return false;
+	}
+
+	pdf = reflectPercentage;
+
+	Vector invRayDir(hitInfo.inRay.getDirection());
+	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
+	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
+
+	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
+	color = hitInfo.hittedMaterial.reflective * reflectPercentage;
+
+	return factor > 0.0f;
 }
 
 // ======================================================================================================================
@@ -136,7 +164,7 @@ float ComputeFresnelRefractedEnergy(float iIOR, Vector inDir, Vector inNormal, f
 	float rs = (oIOR * cosi - iIOR * coso) / (oIOR * cosi + iIOR * coso);
 	float rp = (iIOR * cosi - oIOR * coso) / (iIOR * cosi + oIOR * coso);
 
-	return 1.0f - ((rs*rs + rp*rp) * 0.5f);
+	return ((rs*rs + rp*rp) * 0.5f);
 }
 
 bool AttemptToTransmitRay(const Ray & incidentRay, HitInfo & hitInfo, Vector & refracted, float &transmittedPercentage)
@@ -174,6 +202,6 @@ bool AttemptToTransmitRay(const Ray & incidentRay, HitInfo & hitInfo, Vector & r
 
 void ComputeOrthoNormalBasis(Vector zVector, Vector &yVector, Vector &xVector)
 {
-	yVector = Vector(0.1, 1.0, 1.0).Cross(zVector).Normalize();
+	yVector = Vector(0.1f, 1.0f, 1.0f).Cross(zVector).Normalize();
 	xVector = yVector.Cross(zVector).Normalize();
 }

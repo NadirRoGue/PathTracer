@@ -66,11 +66,9 @@
 		<!-- Designed for reflexive plastic -->
 		<material name="White">
 			<texture filename=""/>
-			<diffuse red="0.7" green="0.0" blue="0.7"/>
+			<diffuse red="0.65" green="0.65" blue="0.65"/>
 			<specular red="0.3" green="0.3" blue="0.3" shininess="50.0"/>
-			<transparent red="0.0" green="0.0" blue="0.0"/>
 			<reflective red="0.05" green="0.05" blue="0.05"/>
-			<refraction_index red="0.0" green="0.0" blue="0.0"/>
 		</material>
 		
 		<material name="Transparent">
@@ -86,10 +84,7 @@
 		<material name="MetallicGray">
 			<texture filename=""/>
 			<diffuse red="0.5" green="0.5" blue="0.5"/>
-			<specular red="0.7" green="0.7" blue="0.7" shininess="100.0"/>
-			<transparent red="0.0" green="0.0" blue="0.0"/>
-			<reflective red="1.0" green="1.0" blue="1.0"/>
-			<refraction_index red="0.0" green="0.0" blue="0.0"/>
+			<reflective red="0.5" green="0.5" blue="0.5"/>
 		</material>
 	</material_list>
 

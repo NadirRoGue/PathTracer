@@ -61,7 +61,7 @@ bool MetallicMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, V
 	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 
 	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
-	result = hitInfo.hittedMaterial.diffuse;
+	result = hitInfo.hittedMaterial.reflective;
 
 	return factor > 0.0f;
 }
