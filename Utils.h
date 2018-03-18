@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "Config.h"
+
 
 /*
 	Vector Class - A float triplet class with several vector-operation functions
@@ -295,8 +297,77 @@ public:
 
 		return retMatrix;
 	}
+
+	void setTranslateMatrix(const Vector & pos)
+	{
+		Identity();
+		_14 = pos.x;
+		_24 = pos.y;
+		_34 = pos.z;
+	}
+
+	void setScaleMatrix(const Vector & scale)
+	{
+		Identity();
+		_11 = scale.x;
+		_22 = scale.y;
+		_33 = scale.z;
+	}
 };
 
+class Quaternion
+{
+private:
+	Vector eulerAngles;
+
+public:
+	Quaternion() {}
+	Quaternion(float pitch, float yaw, float roll) { setEulerAngles(Vector(pitch, yaw, roll)); }
+	Quaternion(Vector eulerAngles) { setEulerAngles(eulerAngles); }
+
+
+	void setEulerAngles(Vector v)
+	{
+		eulerAngles.x = v.x * float(_RT_DEG_TO_RAD); 
+		eulerAngles.y = v.y * float(_RT_DEG_TO_RAD); 
+		eulerAngles.z = v.z * float(_RT_DEG_TO_RAD);
+	}
+
+	Matrix getRotationMatrix()
+	{
+		float cosPitch = float(cos(eulerAngles.x));
+		float sinPitch = float(sin(eulerAngles.x));
+
+		float cosYaw = float(cos(eulerAngles.y));
+		float sinYaw = float(sin(eulerAngles.y));
+
+		float cosRoll = float(cos(eulerAngles.z));
+		float sinRoll = float(sin(eulerAngles.z));
+
+		Matrix result;
+		result._11 = cosYaw*cosRoll; 
+		result._12 = sinPitch*sinYaw*cosRoll - cosPitch*sinRoll; 
+		result._13 = sinPitch*sinRoll + cosPitch*sinYaw*cosRoll; 
+		result._14 = 0.0f;
+
+		result._21 = cosYaw*sinRoll; 
+		result._22 = cosPitch*cosRoll + sinPitch*sinYaw*sinRoll; 
+		result._23 = cosPitch*sinYaw*sinRoll - sinPitch*cosRoll; 
+		result._24 = 0.0f;
+
+		result._31 = -sinYaw; 
+		result._32 = sinPitch*cosYaw; 
+		result._33 = cosPitch*cosYaw; 
+		result._34 = 0.0f;
+
+		result._41 = result._42 = result._43 = 0.0f; result._44 = 1.0f;
+
+		return result;
+	}
+};
+
+void ComputeOrthoNormalBasis(Vector zVector, Vector &yVector, Vector &xVector);
+Vector WorldUniformHemiSample(Vector uniHemiSample, Vector & zVector, Vector &yVector, Vector &xVector);
 
 /*
 	Camera Class - Class to help keep track of camera movements
@@ -318,7 +389,7 @@ public:
 	Camera (void) {}
 
 	// - Parameter Constructor - Initializes to Vector <a, b, c>
-	Camera (Vector p, Vector t, Vector u) { position = p; target = t; up = u; }
+	Camera(Vector p, Vector t, Vector u) { position = p; target = t; up = u; }
 
 	// - Default Destructor -
 	~Camera ()	{}

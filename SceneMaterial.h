@@ -18,6 +18,7 @@ public:
 	Vector transparent;
 	Vector reflective;
 	Vector refraction_index;
+	Vector emissive;
 
 	// -- Constructors & Destructors --
 	SceneMaterial(void) : tex(NULL)

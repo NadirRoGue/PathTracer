@@ -422,6 +422,7 @@ void processarrowkeys(int key, int x, int y)
 		tempVec = dir - right * turnSpeed;
 		tempVec.Normalize ();
 		g_RayTrace.m_Scene.m_Camera.SetTarget (g_RayTrace.m_Scene.m_Camera.GetPosition () + tempVec * tar_posDist);
+		//g_RayTrace.m_Scene.m_Camera.SetUp(right.Cross(tempVec)); // THE UP VECTOR WASNT BEING COMPUTED, CAUSING THE RAY TO BE PERTURBED...
 		break;
 
 	case GLUT_KEY_RIGHT:
@@ -430,6 +431,7 @@ void processarrowkeys(int key, int x, int y)
 		tempVec = dir + right * turnSpeed;
 		tempVec.Normalize ();
 		g_RayTrace.m_Scene.m_Camera.SetTarget (g_RayTrace.m_Scene.m_Camera.GetPosition () + tempVec * tar_posDist);
+		//g_RayTrace.m_Scene.m_Camera.SetUp(right.Cross(tempVec)); // THE UP VECTOR WASNT BEING COMPUTED, CAUSING THE RAY TO BE PERTURBED...
 		break;
 
 	case GLUT_KEY_UP:

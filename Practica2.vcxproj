@@ -94,9 +94,12 @@
     <ClCompile Include="RayTrace.cpp" />
     <ClCompile Include="Sampler.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SceneLight.cpp" />
+    <ClCompile Include="SceneObject.cpp" />
     <ClCompile Include="starter.cpp" />
     <ClCompile Include="Threadpool.cpp" />
     <ClCompile Include="Tracer.cpp" />
+    <ClCompile Include="Utils.cpp" />
     <ClCompile Include="xmlParser.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -110,7 +113,9 @@
     <ClInclude Include="RayTrace.h" />
     <ClInclude Include="Sampler.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneLight.h" />
     <ClInclude Include="SceneMaterial.h" />
+    <ClInclude Include="SceneObject.h" />
     <ClInclude Include="Threadpool.h" />
     <ClInclude Include="Tracer.h" />
     <ClInclude Include="Utils.h" />

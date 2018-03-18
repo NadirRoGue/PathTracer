@@ -52,6 +52,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <time.h>
 
 #include "Utils.h"
 #include "pic.h"
@@ -65,25 +66,14 @@
 #include "3ds.h"
 
 #include "Ray.h"
+#include "SceneObject.h"
+#include "SceneLight.h"
 
 // Max Line Length for OBJ File Loading
 #define MAX_LINE_LEN 1000
 
 #define CHECK_ATTR(a) (a == NULL ? "" : a)
 #define CHECK_ATTR2(a,b) (a == NULL ? b : a)
-
-/*
-	SceneObjectType Namespace - Holds the ObjectType Enumeration
-*/
-namespace SceneObjectType
-{
-	enum ObjectType
-	{
-		Sphere = 0,
-		Triangle = 1,
-		Model = 2,
-	};
-};
 
 /*
 	SceneBackground Class - The Background properties of a ray-trace scene
@@ -95,113 +85,6 @@ class SceneBackground
 public:
 	Vector color;
 	Vector ambientLight;
-};
-
-/*
-	SceneLight Class - The light properties of a single light-source in a ray-trace scene
-
-	The Scene class holds a list of these
-*/
-class SceneLight
-{
-public:
-	float attenuationConstant, attenuationLinear, attenuationQuadratic;
-	Vector color;
-	Vector position;
-};
-
-/*
-	SceneObject Class - A base object class that defines the common features of all objects
-
-	This is the base object class that the various scene object types derive from
-*/
-class SceneObject
-{
-public:
-	std::string name;
-	SceneObjectType::ObjectType type;
-	Vector scale, rotation, position;
-
-	std::string physicalMaterial;
-
-	// -- Constructors & Destructors --
-	SceneObject (void) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-	SceneObject (SceneObjectType::ObjectType tp) : type (tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-	SceneObject (std::string nm, SceneObjectType::ObjectType tp) : name(nm), type (tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-
-	// -- Object Type Checking Functions --
-	bool IsSphere (void) { return (type == SceneObjectType::Sphere); }
-	bool IsTriangle (void) { return (type == SceneObjectType::Triangle); }
-	bool IsModel (void) { return (type == SceneObjectType::Model); }
-
-	virtual void testIntersection(const Ray & ray, HitInfo & outInfo) = 0;
-};
-
-/*
-	SceneSphere Class - The sphere scene object
-
-	Sphere object derived from the SceneObject
-*/
-class SceneSphere : public SceneObject
-{
-public:
-	SceneMaterial * material;
-	Vector center;
-	float radius;
-
-	// -- Constructors & Destructors --
-	SceneSphere (void) : SceneObject ("Sphere", SceneObjectType::Sphere) {}
-	SceneSphere (std::string nm) : SceneObject (nm, SceneObjectType::Sphere) {}
-
-	void testIntersection(const Ray & ray, HitInfo & outInfo);
-};
-
-/*
-	SceneTriangle Class - The triangle scene object
-
-	Single triangle object derived from the SceneObject
-*/
-class SceneTriangle : public SceneObject
-{
-public:
-	SceneMaterial * material[3];
-	Vector vertex[3];
-	Vector normal[3];
-	float u[3], v[3];
-
-	// -- Constructors & Destructors --
-	SceneTriangle (void) : SceneObject ("Triangle", SceneObjectType::Triangle) {}
-	SceneTriangle (std::string nm) : SceneObject (nm, SceneObjectType::Triangle) {}
-
-	void testIntersection(const Ray & ray, HitInfo & outInfo);
-private:
-	SceneMaterial averageMaterials(float u, float v, float w, float finalU, float finalV);
-};
-
-/*
-	SceneModel Class - The model scene object
-
-	A model object consisting of a list of triangles derived from the SceneObject
-*/
-class SceneModel : public SceneObject
-{
-public:
-	std::string filename;
-	std::vector<SceneTriangle> triangleList;
-
-	// -- Constructors & Destructors --
-	SceneModel (void) : SceneObject ("Model", SceneObjectType::Model) {}
-	SceneModel (std::string file) : SceneObject ("Model", SceneObjectType::Model) { filename = file; }
-	SceneModel (std::string file, std::string nm) : SceneObject (nm, SceneObjectType::Model) { filename = file; }
-
-	// -- Accessor Functions --
-	// - GetNumTriangles - Returns the number of triangles in the model
-	unsigned int GetNumTriangles (void) { return (unsigned int)triangleList.size (); }
-
-	// - GetTriangle - Gets the nth SceneTriangle
-	SceneTriangle *GetTriangle (int triIndex) { return &triangleList[triIndex]; }
-
-	void testIntersection(const Ray & ray, HitInfo & outInfo);
 };
 
 /*
@@ -228,18 +111,18 @@ private:
 	{
 		if (node.isEmpty ())
 			return Vector (0.0f, 0.0f, 0.0f);
-		return Vector (atof(node.getAttribute("red")), 
-						atof(node.getAttribute("green")),
-						atof(node.getAttribute("blue")));
+		return Vector (float(atof(node.getAttribute("red"))), 
+						float(atof(node.getAttribute("green"))),
+						float(atof(node.getAttribute("blue"))));
 	}
 
 	Vector ParseXYZ (XMLNode node)
 	{
 		if (node.isEmpty ())
 			return Vector (0.0f, 0.0f, 0.0f);
-		return Vector (atof(node.getAttribute("x")), 
-					   atof(node.getAttribute("y")),
-					   atof(node.getAttribute("z")));
+		return Vector (float(atof(node.getAttribute("x"))), 
+					   float(atof(node.getAttribute("y"))),
+					   float(atof(node.getAttribute("z"))));
 	}
 
 	void ParseOBJCommand (char *line, int max, char *command, int &position);
@@ -333,6 +216,16 @@ public:
 
 	// - GetCamera - Returns the camera class
 	Camera GetCamera (void) { return m_Camera; }
+
+	SceneLight * SampleLight(float &pdf)
+	{
+		srand(unsigned int(time(NULL)));
+		unsigned int sampledLight = rand() % GetNumLights();
+
+		pdf = 1.0f / GetNumLights();
+
+		return GetLight(sampledLight);
+	}
 };
 
 

@@ -47,7 +47,7 @@ public:
 	RayTracer(Scene * scene) :Tracer(scene) {}
 	virtual Vector doTrace(int screenX, int screenY);
 protected:
-	Vector shade(const Ray & ray);
+	virtual Vector shade(const Ray & ray);
 };
 
 // =================================================================================
@@ -60,3 +60,22 @@ public:
 };
 
 // =================================================================================
+
+class MonteCarloRayTracer : public RayTracer
+{
+private:
+	Sampler * pixelSampler;
+	float pdfArea;
+public:
+	MonteCarloRayTracer(Scene * scene) :RayTracer(scene) 
+	{ 
+		pixelSampler = new MultiJitteredSampler(_RT_MC_PIXEL_SAMPLES, 83);
+		pdfArea = 1.0f / (Scene::WINDOW_HEIGHT * Scene::WINDOW_WIDTH);
+	}
+
+	Vector doTrace(int screenX, int screenY);
+	Vector shade(const Ray & ray);
+
+private:
+	void samplePixel(int x, int y, float &st, float &ss, float &pdf);
+};

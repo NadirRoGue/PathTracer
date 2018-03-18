@@ -57,26 +57,21 @@ void RayTrace::releaseBuffer()
 
 void RayTrace::initializeTracer()
 {
+	if (tracer != NULL)
+	{
+		delete tracer;
+	}
+
 	if (Scene::montecarlo)
 	{
-		
+		tracer = new MonteCarloRayTracer(&m_Scene);
 	}
 	else if (Scene::supersample)
 	{
-		if (tracer != NULL)
-		{
-			delete tracer;
-		}
-
 		tracer = new SuperSamplingRayTracer(&m_Scene);
 	}
 	else
 	{
-		if (tracer != NULL)
-		{
-			delete tracer;
-		}
-
 		tracer = new RayTracer(&m_Scene);
 	}
 }

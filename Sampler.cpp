@@ -6,20 +6,30 @@
 #include <time.h>
 #include <vector>
 #include <algorithm>
+#include <random>
+#include <iostream>
 
 /*
 * Based on the code from "Raytracing from Ground Up", from Kevin Suffern
 */
 
-Sampler::Sampler(unsigned int numSamples, unsigned int numItems) :numSamples(numSamples), numItems(numItems)
+Sampler::Sampler(unsigned int numSamples, unsigned int numItems) :numSamples(numSamples), numItems(numItems),usedSamples(0)
 {
+	numItems = 100;
 	// Reserve space for both type of samples
-	planeSamples = new Vector[numSamples * numItems];
+	planeSamples.resize(numSamples * numItems);
 	// Shuffle sample access indices to get more uniformly distributed samples
 	// between adjacents
 	shuffleIndices();
 	// Generate the samples (in unit square, directly valid for plane samples)
 	//initSamples();
+
+	ditrib = std::uniform_real_distribution<float>(0.0f, 1.0f);
+}
+
+Sampler::~Sampler()
+{
+	
 }
 
 Vector Sampler::samplePlane()
@@ -27,7 +37,7 @@ Vector Sampler::samplePlane()
 	// Start sampling a new item, jump to a different item sample buffer
 	if (usedSamples % numSamples == 0)
 	{
-		srand(time(NULL));
+		srand(unsigned int(time(NULL)));
 		jump = (rand() % numItems) * numSamples;
 	}
 
@@ -36,20 +46,62 @@ Vector Sampler::samplePlane()
 
 Vector Sampler::sampleHemiSphere()
 {
+	/*
 	// Start sampling a new item
 	if (usedSamples % numSamples == 0)
 	{
-		srand(time(NULL));
+		srand(unsigned int(time(NULL)));
 		jump = (rand() % numItems) * numSamples;
 	}
 
-	return (hemiSamples[jump + suffledIndices[jump + numItems++ % numSamples]]);
+	unsigned int suffleAccess = jump + usedSamples++ % numSamples;
+
+	if (suffleAccess >= suffledIndices.size())
+	{
+		std::cout << "SuffleAccess wrong: " << suffleAccess << std::endl;
+	}
+
+	unsigned int shuffledIndice = suffledIndices[suffleAccess];
+
+	if ((shuffledIndice + jump) >= hemiSamples.size())
+	{
+		std::cout << "Hemiaccess wrong: " << (shuffledIndice + jump) << std::endl;
+	}
+
+	Vector sample = (hemiSamples[jump + shuffledIndice]);
+
+	//std::cout << sample.x << ", " << sample.y << ", " << sample.z << std::endl;
+
+	return sample;*/
+
+	float sx = ditrib(generator);
+	float sy = ditrib(generator);
+	float sinTheta = sqrtf(1.0f - sx * sy);
+	float phi = 2.0f * float(M_PI) * sy;
+	float x = sinTheta * cosf(phi);
+	float z = sinTheta * sinf(phi);
+	return Vector(x, sx, z);
+}
+
+Vector Sampler::sampleSphere()
+{
+	if (usedSamples % numSamples == 0)
+	{
+		srand(unsigned int(time(NULL)));
+		jump = (rand() % numItems) * numSamples;
+	}
+
+	Vector sample = (sphereSamples[jump + suffledIndices[jump + usedSamples++ % numSamples]]);
+
+	std::cout << sample.x << ", " << sample.y << ", " << sample.z << std::endl;
+
+	return sample;
 }
 
 void Sampler::shuffleIndices()
 {
-	suffledIndices = new unsigned int[numSamples * numItems];
-	std::vector<int> indices;
+	suffledIndices.resize(numSamples * numItems);
+	std::vector<unsigned int> indices;
 	indices.reserve(numSamples);
 
 	// Gather all our local indices (thats it, the indices of the samples of a single item)
@@ -71,17 +123,48 @@ void Sampler::mapToHemiSphere(float cosineExp)
 {
 	// Cosine weighted hemisphere distribution
 	unsigned int size = numSamples * numItems;
-	hemiSamples = new Vector[size];
+	hemiSamples.resize(size);
 
-	for (unsigned int j = 0; j < size; j++) {
-		float cosPhi = float(cos(2.0 * M_PI * planeSamples[j].x));
-		float sinPhi = float(sin(2.0 * M_PI * planeSamples[j].x));
+	std::default_random_engine generator;
+	std::uniform_real_distribution<float> ditrib(0.0f, 1.0f);
+
+	for (unsigned int j = 0; j < size; j++) 
+	{
+		/*
+		float cosPhi = cosf(2.0 * M_PI * planeSamples[j].x);
+		float sinPhi = sinf(2.0 * M_PI * planeSamples[j].x);
 		float cosTheta = float(pow((1.0 - planeSamples[j].y), 1.0 / (cosineExp + 1.0f)));
-		float sinTheta = float(sqrt(1.0 - cosTheta * cosTheta));
+		float sinTheta = sqrtf(1.0 - cosTheta * cosTheta);
 		float pu = sinTheta * cosPhi;
 		float pv = sinTheta * sinPhi;
 		float pw = cosTheta;
-		hemiSamples[j] = Vector(pu, pv, pw);
+		hemiSamples[j] = Vector(pu, pw, pv);
+		*/
+
+		//Vector sample = planeSamples[j];
+		float sx = ditrib(generator);
+		float sy = ditrib(generator);
+		float sinTheta = sqrtf(1.0f - sx * sy);
+		float phi = 2.0f * float(M_PI) * sy;
+		float x = sinTheta * cosf(phi);
+		float z = sinTheta * sinf(phi);
+		hemiSamples[j] = Vector(x, sx, z);
+	}
+}
+
+void Sampler::mapToUniformSphere()
+{
+	unsigned int size = numSamples * numItems;
+	sphereSamples.resize(size);
+
+	for (unsigned int j = 0; j < size; j++)
+	{
+		float theta = 2.0f * float(M_PI) * planeSamples[j].x;
+		float phi = acos(1 - 2 * planeSamples[j].y);
+		float x = sin(phi) * cosf(theta);
+		float y = sinf(phi) * sinf(theta);
+		float z = cosf(phi);
+		sphereSamples[j] = Vector(x, y, z);
 	}
 }
 
@@ -113,7 +196,7 @@ void MultiJitteredSampler::initSamples()
 	// Bottom level grid for n-rocks
 	float nRockCellW = 1.0f / ((float)numSamples);
 
-	srand(time(NULL));
+	srand(unsigned int(time(NULL)));
 
 	float randomPosInCell;
 	// distribute points in the initial patterns
@@ -144,7 +227,11 @@ void MultiJitteredSampler::initSamples()
 			for (unsigned int j = 0; j < n; j++) 
 			{
 				int indexDiff = (n - 1) - j;
-				int k = j + (rand() % indexDiff);// rand_int(j, n - 1);
+				int k = j;
+				if (indexDiff > 0)
+				{
+					k += (rand() % (indexDiff));// rand_int(j, n - 1);
+				}
 				float t = planeSamples[i * n + j + p * numSamples].x;
 				planeSamples[i * n + j + p * numSamples].x = planeSamples[i * n + k + p * numSamples].x;
 				planeSamples[i * n + k + p * numSamples].x = t;
@@ -160,7 +247,11 @@ void MultiJitteredSampler::initSamples()
 			for (unsigned int j = 0; j < n; j++)
 			{
 				int indexDiff = (n - 1) - j;
-				int k = j + (rand() % indexDiff);// rand_int(j, n - 1);
+				int k = j;
+				if (indexDiff > 0)
+				{
+					k += (rand() % (indexDiff));// rand_int(j, n - 1);
+				}
 				float t = planeSamples[j * n + i + p * numSamples].y;
 				planeSamples[j * n + i + p * numSamples].y = planeSamples[k * n + i + p * numSamples].y;
 				planeSamples[k * n + i + p * numSamples].y = t;

@@ -3,7 +3,7 @@
 #include <time.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
-
+#include <stdio.h>
 #include "Config.h"
 
 // BRDF
@@ -21,13 +21,15 @@ bool DiffuseLambertian::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vecto
 	ComputeOrthoNormalBasis(zVector, yVector, xVector);
 
 	Vector sample = sampler->sampleHemiSphere();
-	Vector scatteredDir = (xVector * sample.x + yVector * sample.y + zVector * sample.z).Normalize();
+	Vector scatteredDir = WorldUniformHemiSample(sample, zVector, yVector, xVector).Normalize();
+	
+	//printf("Normal %f %f %f   Scattered %f %f %f\n", zVector.x, zVector.y, zVector.z, scatteredDir.x, scatteredDir.y, scatteredDir.z);
 	
 	scatteredRay = Ray(hitInfo.hitPoint + zVector * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
-	color = hitInfo.hittedMaterial.diffuse;
-	pdf = zVector.Dot(scatteredDir);
+	color = hitInfo.hittedMaterial.diffuse / float(M_PI);
+	pdf = 1.0f / (2.0f * float(M_PI));
 
-	return pdf > 0.0f;
+	return true;
 }
 
 // ======================================================================================================================
@@ -198,10 +200,4 @@ bool AttemptToTransmitRay(const Ray & incidentRay, HitInfo & hitInfo, Vector & r
 	}
 
 	return false;
-}
-
-void ComputeOrthoNormalBasis(Vector zVector, Vector &yVector, Vector &xVector)
-{
-	yVector = Vector(0.1f, 1.0f, 1.0f).Cross(zVector).Normalize();
-	xVector = yVector.Cross(zVector).Normalize();
 }

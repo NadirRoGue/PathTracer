@@ -5,7 +5,7 @@
 // =======================================================================================
 // Matte
 
-Vector MatteMaterial::computeAmbientRadiance(const Ray & incidentRay, HitInfo & hitInfo)
+Vector MatteMaterial::computeAmbientRadiance(HitInfo & hitInfo)
 {
 	return hitInfo.hittedMaterial.diffuse;
 }
@@ -13,6 +13,12 @@ Vector MatteMaterial::computeAmbientRadiance(const Ray & incidentRay, HitInfo & 
 bool MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
 	return diffuseBRDF->value(hitInfo, scatteredRay, result);
+}
+
+bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf)
+{
+	diffuseBRDF->valueSample(hitInfo, scatteredRay, result, pdf);	
+	return true;
 }
 
 // =======================================================================================
@@ -66,6 +72,18 @@ bool MetallicMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, V
 	return factor > 0.0f;
 }
 
+bool MetallicMaterial::sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+{
+	Vector invRayDir(hitInfo.inRay.getDirection());
+	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
+	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
+
+	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
+	result = hitInfo.hittedMaterial.reflective;
+
+	return factor > 0.0f;
+}
+
 // ======================================================================================
 
 bool GlassMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
@@ -73,9 +91,25 @@ bool GlassMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vect
 	return reflective->value(hitInfo, scatteredRay, result);
 }
 
+bool GlassMaterial::sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+{
+	float pdf;
+	reflective->valueSample(hitInfo, scatteredRay, result, pdf);
+	result = result / pdf;
+	return pdf > 0.0f;
+}
+
 bool GlassMaterial::scatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
 	return transmissive->value(hitInfo, scatteredRay, result);
+}
+
+bool GlassMaterial::sampleScatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+{
+	float pdf;
+	transmissive->valueSample(hitInfo, scatteredRay, result, pdf);
+	result = result / pdf;
+	return pdf > 0.0f;
 }
 
 // ======================================================================================

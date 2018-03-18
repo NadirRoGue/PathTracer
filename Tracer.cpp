@@ -163,10 +163,7 @@ Vector RayTracer::shade(const Ray & ray)
 	}
 	else
 	{
-		Vector topColor(scene->GetBackground().color);
-		Vector bottomColor(0.8f, 0.8f, 1.0f);
-		float alpha = 1.0f - ray.getDirection().y;
-		return bottomColor * alpha + topColor * (1.0f - alpha);
+		return scene->GetBackground().color;
 	}
 }
 
@@ -174,7 +171,7 @@ Vector RayTracer::shade(const Ray & ray)
 
 Vector SuperSamplingRayTracer::doTrace(int screenX, int screenY)
 {
-	srand(time(NULL));
+	srand(unsigned int(time(NULL)));
 
 	Vector color;
 	Ray ray;
@@ -195,4 +192,129 @@ Vector SuperSamplingRayTracer::doTrace(int screenX, int screenY)
 	}
 
 	return (color / float(_RT_SUPERSAMPLING_SAMPLES));
+}
+
+// =============================================================================
+
+Vector MonteCarloRayTracer::doTrace(int screenX, int screenY)
+{
+	Vector pixelColor;
+	float st, ss;
+	float pdf;
+	Ray ray;
+
+	for (unsigned int i = 0; i < _RT_MC_PIXEL_SAMPLES; i++)
+	{
+		samplePixel(screenX, screenY, st, ss, pdf);
+		ray = wrapper.getRayForPixel(st, ss);
+
+		pixelColor = pixelColor + shade(ray) / pdf;
+	}
+
+	pixelColor = pixelColor / _RT_MC_PIXEL_SAMPLES;
+
+	return pixelColor;
+}
+
+Vector MonteCarloRayTracer::shade(const Ray & ray)
+{
+	HitInfo info;
+
+	if (ray.getDepth() < _RT_MAX_BOUNCES && (info = intersect(ray)).hit)
+	{
+		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
+
+		if (averageMaterialAtPoint.emissive.Magnitude() > 0.0f)
+		{
+			return averageMaterialAtPoint.emissive;
+		}
+
+		Vector Lr;
+		Ray scattered;
+		Vector lightVector;
+		Vector I;
+
+		PhysicalMaterial * BRDF = PhysicalMaterialTable::getInstance().getMaterialByName(info.physicalMaterial);
+		if (BRDF == NULL)
+		{
+			return Vector(1.0, 0.0, 1.0);
+		}
+
+		// Direct lighting
+		for (unsigned int i = 0; i < scene->GetNumLights(); i++)
+		{
+			Vector diffuseC, specularC;
+			SceneLight * sl = scene->GetLight(i);
+
+			float dirPdf;
+			lightVector = sl->sampleDirection(info.hitPoint, dirPdf);
+
+			if (dirPdf == 0.0f)
+				continue;
+
+			info.lightVector = lightVector;
+
+			I = lightContribution(info, sl);
+
+			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
+
+			// Diffuse reflectance
+			if (BRDF->computeDiffuseRadiance(info, scattered, diffuseC))
+			{
+				//diffuseC = diffuseC * shade(scattered);
+			}
+
+			Vector indirectLighting;
+			for (unsigned int s = 0; s < _RT_MC_BOUNCES_SAMPLES; s++)
+			{
+				Ray difRay;
+				float dPdf;
+				if(BRDF->sampleDiffuseRadiance(info, difRay, Vector(), dPdf))
+				{
+					indirectLighting = indirectLighting + (shade(difRay) / dPdf);
+				}
+			}
+
+			indirectLighting = indirectLighting / _RT_MC_BOUNCES_SAMPLES;
+
+			Lr = (Lr + (I * (diffuseC * indirectLighting) * cosValue)) / (dirPdf);
+			fixGammut(Lr);
+		}
+
+		// Specular reflection
+		Vector reflexion;
+		if (BRDF->scatterReflexion(info, scattered, reflexion))
+		{
+			Lr = Lr + (reflexion * shade(scattered));
+		}
+
+		// Refraction
+		Vector refracted;
+		if (BRDF->scatterTransmission(info, scattered, refracted))
+		{
+			Lr = Lr + (refracted * shade(scattered));
+		}
+
+		// Ambient lighting
+		Lr = Lr + BRDF->computeAmbientRadiance(info) * scene->GetBackground().ambientLight;
+
+		//fixGammut(Lr);
+
+		return Lr;
+	}
+	else
+	{
+		return scene->GetBackground().color;
+	}
+}
+
+void MonteCarloRayTracer::samplePixel(int x, int y, float &st, float &ss, float &pdf)
+{
+	Vector sample = pixelSampler->samplePlane();
+	float sampledPixelX = float(x) + sample.x;
+	float sampledPixelY = float(y) + sample.y;
+
+	st = float(sampledPixelX) / float(Scene::WINDOW_WIDTH);
+	ss = float(sampledPixelY) / float(Scene::WINDOW_HEIGHT);
+	pdf = 1.0f; // / float(pixelSampler->getNumSamples());
 }

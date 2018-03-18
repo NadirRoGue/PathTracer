@@ -22,8 +22,13 @@ public:
 	virtual bool computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { result = Vector(); return false;  }
 	virtual bool computeSpecularRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { result = Vector(); return false;  }
 
+	virtual bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf) { result = Vector(); return false; }
+
 	virtual bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
 	virtual bool scatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
+
+	virtual bool sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
+	virtual bool sampleScatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
 };
 
 // =====================================================================================================
@@ -38,8 +43,9 @@ public:
 	MatteMaterial(std::string name = "Matte") :PhysicalMaterial(name) { ambientBRDF = new DiffuseLambertian(); diffuseBRDF = new DiffuseLambertian(); }
 	~MatteMaterial() { delete ambientBRDF; delete diffuseBRDF; }
 
-	Vector computeAmbientRadiance(const Ray & incidentRay, HitInfo & hitInfo);
+	Vector computeAmbientRadiance(HitInfo & hitInfo);
 	bool computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
 };
 
 // =====================================================================================================
@@ -88,6 +94,7 @@ public:
 
 	//bool computeSpecularRadiance(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & result);
 	bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	bool sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
 };
 
 // =====================================================================================================
@@ -103,6 +110,9 @@ public:
 
 	bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
 	bool scatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+
+	bool sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	bool sampleScatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
 };
 
 // =====================================================================================================
