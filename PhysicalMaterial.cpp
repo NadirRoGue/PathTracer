@@ -1,6 +1,7 @@
 #include "PhysicalMaterial.h"
 
 #include "Config.h"
+#include <iostream>
 
 // =======================================================================================
 // Matte

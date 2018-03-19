@@ -1,5 +1,6 @@
 
 #include "Threadpool.h"
+#include "Config.h"
 
 #include <iostream>
 
@@ -12,8 +13,12 @@ ThreadPool::ThreadPool()
 void ThreadPool::init()
 {
 	active = true;
+#ifdef _RT_USE_MULTITHREAD
 	poolSize = std::thread::hardware_concurrency();
 	poolSize = poolSize < 1 ? 1 : poolSize;
+#else
+	poolSize = 1;
+#endif
 	for (unsigned i = 0; i < poolSize; i++)
 	{
 		std::thread t(&ThreadPool::pollTask, this);

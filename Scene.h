@@ -196,7 +196,7 @@ public:
 
 	// - GetMaterial - Returns the nth SceneMaterial
 	SceneMaterial* GetMaterial (int matIndex) const { return m_MaterialList[matIndex]; }
-	SceneMaterial* GetMaterial (std::string matName) const
+	SceneMaterial * GetMaterial (std::string matName) const
 	{
 		unsigned int numMats = (unsigned int)m_MaterialList.size ();
 		for (unsigned int n = 0; n < numMats; n++)

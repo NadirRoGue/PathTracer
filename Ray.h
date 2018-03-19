@@ -29,6 +29,8 @@ struct HitInfo
 	Vector hitPoint;
 	Vector hitNormal;
 	bool hit;
+	bool isLight;
+	Vector emission;
 	SceneMaterial hittedMaterial;
 	std::string physicalMaterial;
 	float u, v;

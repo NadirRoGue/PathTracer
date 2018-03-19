@@ -61,7 +61,7 @@
 		</material>
 		
 		<material name="WhiteMatte">
-			<diffuse red="1.0" green="1.0" blue="1.0"/>
+			<diffuse red="0.65" green="0.65" blue="0.65"/>
 		</material>
 		
 		<material name="Transparent">
@@ -86,6 +86,7 @@
 	<!-- Light Sources Collection -->
 	<light_list>
 		<!-- Light Description, Color & Position -->
+		<!--
 		<light>
 			<type val="PointLight"/>
 			<id val="1"/>
@@ -93,12 +94,15 @@
 			<position x="0.0" y="5.0" z="0.0"/>
 			<attenuation constant="0.15" linear="0.03" quadratic="0.00"/>
 		</light>
-		<!--<light>
+		-->
+		<light>
 			<type val="AreaLight"/>
 			<id val="2"/>
 			<color red="1.0" green="1.0" blue="1.0"/>
+			<position x="0.0" y="7.0" z="0.0"/>
 			<attenuation constant="0.15" linear="0.03" quadratic="0.00"/>
-		</light>-->
+		</light>
+		
 	</light_list>
 
 	<!-- List of Scene Objects -->
@@ -131,6 +135,56 @@
 
 			<center x="0.0" y="0.0" z="0.0"/>
 		</sphere>
+		
+		<triangle name="LightTriangle1" lightId="2">
+			<scale x="1.0" y="1.0" z="1.0"/>
+			<rotation x="0.0" y="0.0" z="0.0"/>
+			<position x="0.0" y="0.0" z="0.0"/>
+			<physicalMaterial name="Matte" />
+
+			<vertex index="0" material="RedMatte">
+				<position x="-1.0" y="7.0" z="1.0"/>
+				<normal x="0.0" y="-1.0" z="0.0"/>
+				<texture u="0.0" v="0.0"/>
+			</vertex>
+
+			<vertex index="1" material="RedMatte">
+				<position x="1.0" y="7.0" z="1.0"/>
+				<normal x="0.0" y="-1.0" z="0.0"/>
+				<texture u="1.0" v="0.0"/>
+			</vertex>
+
+			<vertex index="2" material="RedMatte">
+				<position x="-1.0" y="7.0" z="-1.0"/>
+				<normal x="0.0" y="-1.0" z="0.0"/>
+				<texture u="0.0" v="1.0"/>
+			</vertex>
+		</triangle>
+		
+		<triangle name="LightTriangle2" lightId="2">
+			<scale x="1.0" y="1.0" z="1.0"/>
+			<rotation x="0.0" y="0.0" z="0.0"/>
+			<position x="0.0" y="0.0" z="0.0"/>
+			<physicalMaterial name="Matte" />
+
+			<vertex index="0" material="RedMatte">
+				<position x="1.0" y="7.0" z="1.0"/>
+				<normal x="0.0" y="-1.0" z="0.0"/>
+				<texture u="1.0" v="0.0"/>
+			</vertex>
+
+			<vertex index="1" material="RedMatte">
+				<position x="1.0" y="7.0" z="-1.0"/>
+				<normal x="0.0" y="-1.0" z="0.0"/>
+				<texture u="1.0" v="1.0"/>
+			</vertex>
+			
+			<vertex index="2" material="RedMatte">
+				<position x="-1.0" y="7.0" z="-1.0"/>
+				<normal x="0.0" y="-1.0" z="0.0"/>
+				<texture u="0.0" v="1.0"/>
+			</vertex>
+		</triangle>
 		
 		<triangle name="CeilingTriangle1">
 			<scale x="1.0" y="1.0" z="1.0"/>
@@ -181,7 +235,7 @@
 				<texture u="0.0" v="1.0"/>
 			</vertex>
 		</triangle>
-		
+		-->
 		<triangle name="FloorTriangle1">
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="0.0" z="0.0"/>

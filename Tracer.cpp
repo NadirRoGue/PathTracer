@@ -43,15 +43,13 @@ HitInfo Tracer::intersect(const Ray & ray)
 	return closer;
 }
 
-Vector Tracer::lightContribution(HitInfo & info, SceneLight * light)
+Vector Tracer::lightContribution(HitInfo & info, Vector & lightVector, SceneLight * light)
 {
-	Vector lightVector = light->position - info.hitPoint;
 	float distToLight = lightVector.Magnitude();
 	lightVector = lightVector.Normalize();
 
 	const unsigned int sceneObjectCount = scene->GetNumObjects();
 
-	lightVector.Normalize();
 	Ray lightVisibilityTest(info.hitPoint + lightVector * _RT_BIAS, lightVector);
 	HitInfo visibilityInfo;
 	bool visible = true;
@@ -117,12 +115,11 @@ Vector RayTracer::shade(const Ray & ray)
 			Vector diffuseC, specularC;
 			SceneLight * sl = scene->GetLight(i);
 
-			lightVector = (sl->position - info.hitPoint).Normalize();
+			lightVector = (sl->position - info.hitPoint);
+			I = lightContribution(info, lightVector, sl);
 
+			lightVector.Normalize();
 			info.lightVector = lightVector;
-
-			I = lightContribution(info, sl);
-
 			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
 
 			// Diffuse reflectance
@@ -222,13 +219,12 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 
 	if (ray.getDepth() < _RT_MAX_BOUNCES && (info = intersect(ray)).hit)
 	{
-		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
-
-		if (averageMaterialAtPoint.emissive.Magnitude() > 0.0f)
+		if (info.isLight)
 		{
-			return averageMaterialAtPoint.emissive;
+			return info.emission;
 		}
 
+		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
 		Vector Lr;
 		Ray scattered;
 		Vector lightVector;
@@ -252,16 +248,24 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			if (dirPdf == 0.0f)
 				continue;
 
+			I = lightContribution(info, lightVector, sl);
 			info.lightVector = lightVector;
-
-			I = lightContribution(info, sl);
-
 			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
 
 			// Diffuse reflectance
-			if (BRDF->computeDiffuseRadiance(info, scattered, diffuseC))
+			BRDF->computeDiffuseRadiance(info, scattered, diffuseC);
+
+			Vector currentShading = (I * cosValue);
+			if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE)
 			{
-				//diffuseC = diffuseC * shade(scattered);
+				Vector tempShading = currentShading * diffuseC;
+				float max = std::max(tempShading.x, std::max(tempShading.y, tempShading.z));
+				float p = d(engine);
+
+				if (p > max)
+				{
+					return tempShading;
+				}
 			}
 
 			Vector indirectLighting;
@@ -271,13 +275,14 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 				float dPdf;
 				if(BRDF->sampleDiffuseRadiance(info, difRay, Vector(), dPdf))
 				{
+					//Vector shaded = shade(difRay);
 					indirectLighting = indirectLighting + (shade(difRay) / dPdf);
 				}
 			}
 
 			indirectLighting = indirectLighting / _RT_MC_BOUNCES_SAMPLES;
 
-			Lr = (Lr + (I * (diffuseC * indirectLighting) * cosValue)) / (dirPdf);
+			Lr = (Lr + ((currentShading + indirectLighting) * diffuseC) / (dirPdf));
 			fixGammut(Lr);
 		}
 
@@ -295,10 +300,7 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			Lr = Lr + (refracted * shade(scattered));
 		}
 
-		// Ambient lighting
-		Lr = Lr + BRDF->computeAmbientRadiance(info) * scene->GetBackground().ambientLight;
-
-		//fixGammut(Lr);
+		//Lr = Lr + BRDF->computeAmbientRadiance(info) * scene->GetBackground().ambientLight;
 
 		return Lr;
 	}

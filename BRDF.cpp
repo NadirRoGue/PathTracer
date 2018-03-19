@@ -22,13 +22,12 @@ bool DiffuseLambertian::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vecto
 
 	Vector sample = sampler->sampleHemiSphere();
 	Vector scatteredDir = WorldUniformHemiSample(sample, zVector, yVector, xVector).Normalize();
-	
+
 	//printf("Normal %f %f %f   Scattered %f %f %f\n", zVector.x, zVector.y, zVector.z, scatteredDir.x, scatteredDir.y, scatteredDir.z);
 	
-	scatteredRay = Ray(hitInfo.hitPoint + zVector * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
-	color = hitInfo.hittedMaterial.diffuse / float(M_PI);
+	scatteredRay = Ray(hitInfo.hitPoint + scatteredDir * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
+	//color = hitInfo.hittedMaterial.diffuse / float(M_PI);
 	pdf = 1.0f / (2.0f * float(M_PI));
-
 	return true;
 }
 

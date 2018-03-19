@@ -73,6 +73,8 @@ void SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 		outHitInfo.physicalMaterial = physicalMaterial;
 		outHitInfo.inRay = ray;
 		outHitInfo.hit = true;
+		outHitInfo.isLight = isLight;
+		outHitInfo.emission = emission;
 	}
 }
 
@@ -87,11 +89,6 @@ void SceneSphere::applyAffineTransformations()
 
 	position = Vector();
 #endif
-}
-
-void SceneSphere::setEmissive(Vector emission)
-{
-	material->emissive = emission;
 }
 
 Vector SceneSphere::sampleShape(float &pdf)
@@ -183,6 +180,8 @@ void SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 				outHitInfo.physicalMaterial = physicalMaterial;
 				outHitInfo.inRay = ray;
 				outHitInfo.hit = true;
+				outHitInfo.isLight = isLight;
+				outHitInfo.emission = emission;
 			}
 		}
 	}
@@ -265,13 +264,6 @@ void SceneTriangle::applyAffineTransformations()
 #endif
 }
 
-void SceneTriangle::setEmissive(Vector emission)
-{
-	material[0]->emissive = emission;
-	material[1]->emissive = emission;
-	material[2]->emissive = emission;
-}
-
 void SceneTriangle::computeArea()
 {
 	Vector BA = vertex[1] - vertex[0];
@@ -282,13 +274,21 @@ void SceneTriangle::computeArea()
 
 Vector SceneTriangle::sampleShape(float &pdf)
 {
+	/*
 	if (sampler == NULL)
 	{
 		sampler = new MultiJitteredSampler(_RT_MC_BOUNCES_SAMPLES, 83);
 	}
+	*/
 	pdf = 1.0f / area;
 
-	Vector sample = sampler->samplePlane();
+	std::default_random_engine engine;
+	std::uniform_real_distribution<float> d(0.0f, 1.0f);
+
+	float r1 = d(engine);
+	float r2 = d(engine);
+	Vector sample(r1, r2, 0.0f);
+
 	return mapSquareSampleToTrianglePoint(sample, vertex[0], vertex[1], vertex[2]);
 }
 
@@ -335,14 +335,6 @@ void SceneModel::applyAffineTransformations()
 	position = rotation = Vector();
 	scale = Vector(1.0f, 1.0f, 1.0f);
 #endif
-}
-
-void SceneModel::setEmissive(Vector emission)
-{
-	for (auto & triangle : triangleList)
-	{
-		triangle.setEmissive(emission);
-	}
 }
 
 void SceneModel::computeArea()

@@ -25,6 +25,8 @@ class SceneObject
 {
 protected:
 	Sampler * sampler;
+	bool isLight;
+	Vector emission;
 public:
 	std::string name;
 	SceneObjectType::ObjectType type;
@@ -38,9 +40,9 @@ public:
 #endif
 
 	// -- Constructors & Destructors --
-	SceneObject(void):sampler(NULL) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-	SceneObject(SceneObjectType::ObjectType tp) : sampler(NULL),type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-	SceneObject(std::string nm, SceneObjectType::ObjectType tp) : sampler(NULL),name(nm), type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
+	SceneObject(void):sampler(NULL),isLight(false) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
+	SceneObject(SceneObjectType::ObjectType tp) : sampler(NULL), isLight(false),type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
+	SceneObject(std::string nm, SceneObjectType::ObjectType tp) : sampler(NULL), isLight(false),name(nm), type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
 	~SceneObject()
 	{
 		if (sampler != NULL)
@@ -54,11 +56,16 @@ public:
 	bool IsTriangle(void) { return (type == SceneObjectType::Triangle); }
 	bool IsModel(void) { return (type == SceneObjectType::Model); }
 
+	void setEmissive(Vector em)
+	{
+		emission = em;
+		isLight = true;
+	}
+
 	virtual void computeArea() { }
 
 	virtual void testIntersection(const Ray & ray, HitInfo & outInfo) = 0;
 	virtual void applyAffineTransformations() = 0;
-	virtual void setEmissive(Vector emission) = 0;
 	virtual Vector sampleShape(float &pdf) = 0;
 
 #ifdef _RT_TRANSFORM_RAY_TO_LOCAL_SPACE
@@ -103,7 +110,6 @@ public:
 
 	void testIntersection(const Ray & ray, HitInfo & outInfo);
 	void applyAffineTransformations();
-	void setEmissive(Vector emission);
 	Vector sampleShape(float &pdf);
 };
 
@@ -128,7 +134,6 @@ public:
 
 	void testIntersection(const Ray & ray, HitInfo & outInfo);
 	void applyAffineTransformations();
-	void setEmissive(Vector emission);
 	void computeArea();
 	Vector sampleShape(float &pdf);
 	
@@ -162,7 +167,6 @@ public:
 
 	void testIntersection(const Ray & ray, HitInfo & outInfo);
 	void applyAffineTransformations();
-	void setEmissive(Vector emission);
 	void computeArea();
 	Vector sampleShape(float &pdf);
 };

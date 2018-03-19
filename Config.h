@@ -12,12 +12,14 @@
 
 #define _RT_PROCESS_PER_PIXEL // Somehow is faster than processing batches of pixels O_o
 
+#define _RT_USE_MULTITHREAD
 #ifndef _RT_PROCESS_PER_PIXEL
 #define _RT_PROCESS_PIXEL_BATCH_SIZE_X 4
 #define _RT_PROCESS_PIXEL_BATCH_SIZE_Y 4
 #endif
 
 #define _RT_MAX_BOUNCES 4
+#define _RT_RUSSIAN_ROULETE_MIN_BOUNCE 3
 #define _RT_BIAS 0.001f
 
 #define _RT_DEG_TO_RAD (M_PI / 180.0f)
@@ -28,4 +30,4 @@
 #define _RT_TRANSFORM_RAY_TO_LOCAL_SPACE 
 
 #define _RT_MC_PIXEL_SAMPLES 4
-#define _RT_MC_BOUNCES_SAMPLES 8
+#define _RT_MC_BOUNCES_SAMPLES 4

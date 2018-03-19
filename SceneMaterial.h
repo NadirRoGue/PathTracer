@@ -19,10 +19,11 @@ public:
 	Vector reflective;
 	Vector refraction_index;
 	Vector emissive;
-
+	
 	// -- Constructors & Destructors --
 	SceneMaterial(void) : tex(NULL)
-	{}
+	{
+	}
 
 	~SceneMaterial(void)
 	{

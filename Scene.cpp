@@ -58,7 +58,7 @@ bool Scene::Load (char *filename)
 			SceneLight *tempLight = NULL;;
 
 			const char * lightType = CHECK_ATTR(tempLightNode.getChildNode("type").getAttribute("val"));
-			printf("%s\n", lightType);
+			
 			if (strcmp(lightType, "PointLight") == 0)
 			{
 				tempLight = new PointLight();
@@ -148,7 +148,7 @@ bool Scene::Load (char *filename)
 						AreaLight * al = dynamic_cast<AreaLight*>(sl);
 						if (al != NULL && sl->id == lightSource)
 						{
-							al->setShape(tempSphere);
+							al->addShape(tempSphere);
 							break;
 						}
 					}
@@ -201,7 +201,7 @@ bool Scene::Load (char *filename)
 						AreaLight * al = dynamic_cast<AreaLight*>(sl);
 						if (al != NULL && sl->id == lightSource)
 						{
-							al->setShape(tempTriangle);
+							al->addShape(tempTriangle);
 							break;
 						}
 					}
@@ -416,7 +416,7 @@ bool Scene::Load (char *filename)
 						AreaLight * al = dynamic_cast<AreaLight*>(sl);
 						if (al != NULL && sl->id == lightSource)
 						{
-							al->setShape(tempModel);
+							al->addShape(tempModel);
 							break;
 						}
 					}
