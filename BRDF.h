@@ -9,9 +9,9 @@ class BRDF
 {
 protected:
 	std::string name;
-	Sampler * sampler;
+	FloatSampler sampler;
 public:
-	BRDF(std::string name) :name(name) { sampler = new MultiJitteredSampler(_RT_MC_BOUNCES_SAMPLES, 83); }
+	BRDF(std::string name) :name(name) { sampler = FloatSampler(0.0f, 1.0f); }
 	std::string getName() { return name; }
 
 	virtual bool value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color) = 0;
@@ -21,7 +21,7 @@ public:
 class DiffuseLambertian : public BRDF
 {
 public:
-	DiffuseLambertian() :BRDF("DiffuseLambertian") { sampler->mapToHemiSphere(0.0f); }
+	DiffuseLambertian() :BRDF("DiffuseLambertian") { }
 
 	bool value(HitInfo & hitInfo, Ray & scatteredRay, Vector & color);
 	bool valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vector & color, float & pdf);

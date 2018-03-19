@@ -15,6 +15,8 @@
 #include <GL/glut.h>
 #endif
 
+#include <map>
+
 #include "Scene.h"
 #include "Config.h"
 
@@ -47,8 +49,12 @@ bool Scene::Load (char *filename)
 	// Load the Lights
 	printf ("Loading Lights...\n");
 	tempNode = sceneXML.getChildNode("light_list");
+
+	std::map<unsigned int, std::vector<SceneObject *>> areaLightShapes;
+
 	if (!tempNode.isEmpty ())
 	{
+
 		unsigned int numLights = tempNode.nChildNode ("light");
 		for (unsigned int n = 0; n < numLights; n++)
 		{
@@ -82,6 +88,8 @@ bool Scene::Load (char *filename)
 			m_LightList.push_back (tempLight);
 		}
 	}
+
+	lightSampler = IntegerSampler(0, int(m_LightList.size() - 1));
 
 	// Load the Materials
 	printf ("Loading Materials...\n");
@@ -143,15 +151,7 @@ bool Scene::Load (char *filename)
 				unsigned int lightSource = atoi(CHECK_ATTR(tempObjectNode.getAttribute("lightId")));
 				if (lightSource > 0)
 				{
-					for (SceneLight * sl : this->m_LightList)
-					{
-						AreaLight * al = dynamic_cast<AreaLight*>(sl);
-						if (al != NULL && sl->id == lightSource)
-						{
-							al->addShape(tempSphere);
-							break;
-						}
-					}
+					areaLightShapes[lightSource].push_back(tempSphere);
 				}
 			}
 			else if (!strcasecmp(tempObjectNode.getName (), "triangle"))
@@ -196,15 +196,7 @@ bool Scene::Load (char *filename)
 				unsigned int lightSource = atoi(CHECK_ATTR(tempObjectNode.getAttribute("lightId")));
 				if (lightSource > 0)
 				{
-					for (SceneLight * sl : this->m_LightList)
-					{
-						AreaLight * al = dynamic_cast<AreaLight*>(sl);
-						if (al != NULL && sl->id == lightSource)
-						{
-							al->addShape(tempTriangle);
-							break;
-						}
-					}
+					areaLightShapes[lightSource].push_back(tempTriangle);
 				}
 			}
 			else if (!strcasecmp(tempObjectNode.getName (), "model"))
@@ -406,20 +398,13 @@ bool Scene::Load (char *filename)
 
 				tempModel->applyAffineTransformations();
 				tempModel->computeArea();
+				tempModel->initSampler();
 				m_ObjectList.push_back (tempModel);
 
 				unsigned int lightSource = atoi(CHECK_ATTR(tempObjectNode.getAttribute("lightId")));
 				if (lightSource > 0)
 				{
-					for (SceneLight * sl : this->m_LightList)
-					{
-						AreaLight * al = dynamic_cast<AreaLight*>(sl);
-						if (al != NULL && sl->id == lightSource)
-						{
-							al->addShape(tempModel);
-							break;
-						}
-					}
+					areaLightShapes[lightSource].push_back(tempModel);
 				}
 			}
 			else
@@ -428,6 +413,27 @@ bool Scene::Load (char *filename)
 				exit (255);
 			}
 		}
+	}
+
+	printf("Mapping Area lights with shapes...\n");
+	std::map<unsigned int, std::vector<SceneObject *>>::iterator it = areaLightShapes.begin();
+	while (it != areaLightShapes.end())
+	{
+		AreaLight * al = NULL;;
+		for (SceneLight * sl : m_LightList)
+		{
+			if (sl->id == it->first && (al = dynamic_cast<AreaLight*>(sl)) != NULL)
+			{
+				break;
+			}
+		}
+		
+		if (al != NULL)
+		{
+			al->addShapes(it->second);
+		}
+
+		it++;
 	}
 
 	// Load the Camera

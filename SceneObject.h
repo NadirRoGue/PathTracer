@@ -24,7 +24,6 @@ This is the base object class that the various scene object types derive from
 class SceneObject
 {
 protected:
-	Sampler * sampler;
 	bool isLight;
 	Vector emission;
 public:
@@ -40,16 +39,10 @@ public:
 #endif
 
 	// -- Constructors & Destructors --
-	SceneObject(void):sampler(NULL),isLight(false) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-	SceneObject(SceneObjectType::ObjectType tp) : sampler(NULL), isLight(false),type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-	SceneObject(std::string nm, SceneObjectType::ObjectType tp) : sampler(NULL), isLight(false),name(nm), type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
-	~SceneObject()
-	{
-		if (sampler != NULL)
-		{
-			delete sampler;
-		}
-	}
+	SceneObject(void): isLight(false) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
+	SceneObject(SceneObjectType::ObjectType tp) : isLight(false),type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
+	SceneObject(std::string nm, SceneObjectType::ObjectType tp) : isLight(false),name(nm), type(tp) { scale.x = 1.0f; scale.y = 1.0f; scale.z = 1.0f; }
+	~SceneObject() {}
 
 	// -- Object Type Checking Functions --
 	bool IsSphere(void) { return (type == SceneObjectType::Sphere); }
@@ -98,6 +91,8 @@ Sphere object derived from the SceneObject
 */
 class SceneSphere : public SceneObject
 {
+private:
+	FloatSampler sampler;
 public:
 	SceneMaterial * material;
 	Vector center;
@@ -120,6 +115,8 @@ Single triangle object derived from the SceneObject
 */
 class SceneTriangle : public SceneObject
 {
+private:
+	FloatSampler sampler;
 public:
 	SceneMaterial * material[3];
 	Vector vertex[3];
@@ -148,6 +145,8 @@ A model object consisting of a list of triangles derived from the SceneObject
 */
 class SceneModel : public SceneObject
 {
+private:
+	IntegerSampler sampler;
 public:
 	std::string filename;
 	std::vector<SceneTriangle> triangleList;
@@ -164,6 +163,8 @@ public:
 
 	// - GetTriangle - Gets the nth SceneTriangle
 	SceneTriangle *GetTriangle(int triIndex) { return &triangleList[triIndex]; }
+
+	void initSampler();
 
 	void testIntersection(const Ray & ray, HitInfo & outInfo);
 	void applyAffineTransformations();

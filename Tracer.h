@@ -65,18 +65,14 @@ public:
 class MonteCarloRayTracer : public RayTracer
 {
 private:
-	Sampler * pixelSampler;
+	FloatSampler pixelSampler;
+	FloatSampler russianRouletteSampler;
 	float pdfArea;
 
-	std::default_random_engine engine;
-	std::uniform_real_distribution<float> d;
 public:
 	MonteCarloRayTracer(Scene * scene) :RayTracer(scene) 
 	{ 
-		pixelSampler = new MultiJitteredSampler(_RT_MC_PIXEL_SAMPLES, 83);
 		pdfArea = 1.0f / (Scene::WINDOW_HEIGHT * Scene::WINDOW_WIDTH);
-
-		d = std::uniform_real_distribution<float>(0.0f, 1.0f);
 	}
 
 	Vector doTrace(int screenX, int screenY);

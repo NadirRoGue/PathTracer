@@ -68,6 +68,7 @@
 #include "Ray.h"
 #include "SceneObject.h"
 #include "SceneLight.h"
+#include "Sampler.h"
 
 // Max Line Length for OBJ File Loading
 #define MAX_LINE_LEN 1000
@@ -106,6 +107,8 @@ private:
 	std::vector<SceneMaterial *> m_MaterialList;
 	std::vector<SceneObject *> m_ObjectList;
 
+
+
 	// - Private utility Functions used by Load () -
 	Vector ParseColor (XMLNode node)
 	{
@@ -130,7 +133,7 @@ private:
 	bool ParseOBJCoords (char *str, int &num, int v_index[3], int n_index[3]);
 public:
 	Camera m_Camera;
-
+	IntegerSampler lightSampler;
 
 	// -- Constructors & Destructors --
 	Scene (void) {}
@@ -219,12 +222,11 @@ public:
 
 	SceneLight * SampleLight(float &pdf)
 	{
-		srand(unsigned int(time(NULL)));
-		unsigned int sampledLight = rand() % GetNumLights();
+		int indice = lightSampler.sampleRect();
 
-		pdf = 1.0f / GetNumLights();
+		pdf = indice / GetNumLights();
 
-		return GetLight(sampledLight);
+		return GetLight(indice);
 	}
 };
 

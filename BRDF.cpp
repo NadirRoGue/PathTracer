@@ -20,7 +20,7 @@ bool DiffuseLambertian::valueSample(HitInfo & hitInfo, Ray & scatteredRay, Vecto
 	Vector yVector, xVector;
 	ComputeOrthoNormalBasis(zVector, yVector, xVector);
 
-	Vector sample = sampler->sampleHemiSphere();
+	Vector sample = sampler.sampleHemiSphere();
 	Vector scatteredDir = WorldUniformHemiSample(sample, zVector, yVector, xVector).Normalize();
 
 	//printf("Normal %f %f %f   Scattered %f %f %f\n", zVector.x, zVector.y, zVector.z, scatteredDir.x, scatteredDir.y, scatteredDir.z);

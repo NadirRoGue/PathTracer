@@ -58,6 +58,10 @@ Vector Tracer::lightContribution(HitInfo & info, Vector & lightVector, SceneLigh
 		SceneObject * so = scene->GetObject(i);
 
 		so->testIntersection(lightVisibilityTest, visibilityInfo);
+		
+		if (visibilityInfo.isLight)
+			continue;
+
 		if (visibilityInfo.hit)
 		{
 			float distanceToHit = (visibilityInfo.hitPoint - info.hitPoint).Magnitude();
@@ -200,6 +204,7 @@ Vector MonteCarloRayTracer::doTrace(int screenX, int screenY)
 	float pdf;
 	Ray ray;
 
+	// Monte carlo AA
 	for (unsigned int i = 0; i < _RT_MC_PIXEL_SAMPLES; i++)
 	{
 		samplePixel(screenX, screenY, st, ss, pdf);
@@ -246,7 +251,9 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			lightVector = sl->sampleDirection(info.hitPoint, dirPdf);
 
 			if (dirPdf == 0.0f)
+			{
 				continue;
+			}
 
 			I = lightContribution(info, lightVector, sl);
 			info.lightVector = lightVector;
@@ -255,12 +262,13 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			// Diffuse reflectance
 			BRDF->computeDiffuseRadiance(info, scattered, diffuseC);
 
+			// Russian roulette
 			Vector currentShading = (I * cosValue);
 			if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE)
 			{
 				Vector tempShading = currentShading * diffuseC;
 				float max = std::max(tempShading.x, std::max(tempShading.y, tempShading.z));
-				float p = d(engine);
+				float p = russianRouletteSampler.sampleRect();
 
 				if (p > max)
 				{
@@ -268,6 +276,7 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 				}
 			}
 
+			// Diffuse - Diffuse light transport
 			Vector indirectLighting;
 			for (unsigned int s = 0; s < _RT_MC_BOUNCES_SAMPLES; s++)
 			{
@@ -275,7 +284,6 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 				float dPdf;
 				if(BRDF->sampleDiffuseRadiance(info, difRay, Vector(), dPdf))
 				{
-					//Vector shaded = shade(difRay);
 					indirectLighting = indirectLighting + (shade(difRay) / dPdf);
 				}
 			}
@@ -300,8 +308,6 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			Lr = Lr + (refracted * shade(scattered));
 		}
 
-		//Lr = Lr + BRDF->computeAmbientRadiance(info) * scene->GetBackground().ambientLight;
-
 		return Lr;
 	}
 	else
@@ -312,11 +318,11 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 
 void MonteCarloRayTracer::samplePixel(int x, int y, float &st, float &ss, float &pdf)
 {
-	Vector sample = pixelSampler->samplePlane();
+	Vector sample = pixelSampler.samplePlane();
 	float sampledPixelX = float(x) + sample.x;
 	float sampledPixelY = float(y) + sample.y;
 
 	st = float(sampledPixelX) / float(Scene::WINDOW_WIDTH);
 	ss = float(sampledPixelY) / float(Scene::WINDOW_HEIGHT);
-	pdf = 1.0f; // / float(pixelSampler->getNumSamples());
+	pdf = 1.0f; // (sampledPixelX * sampledPixelY) * pdfArea;
 }

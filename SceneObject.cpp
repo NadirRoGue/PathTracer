@@ -93,14 +93,8 @@ void SceneSphere::applyAffineTransformations()
 
 Vector SceneSphere::sampleShape(float &pdf)
 {
-	if (sampler == NULL)
-	{
-		sampler = new MultiJitteredSampler(_RT_MC_BOUNCES_SAMPLES, 83);
-		sampler->mapToHemiSphere(0.0f);
-	}
-
+	Vector sample = sampler.sampleSphere();
 	pdf = 1.0f / (float(M_PI) * 4.0f);
-	Vector sample = sampler->sampleSphere();
 	return (center + sample * radius); // In world space
 }
 
@@ -274,20 +268,10 @@ void SceneTriangle::computeArea()
 
 Vector SceneTriangle::sampleShape(float &pdf)
 {
-	/*
-	if (sampler == NULL)
-	{
-		sampler = new MultiJitteredSampler(_RT_MC_BOUNCES_SAMPLES, 83);
-	}
-	*/
+	Vector sample = sampler.samplePlane();
+
 	pdf = 1.0f / area;
-
-	std::default_random_engine engine;
-	std::uniform_real_distribution<float> d(0.0f, 1.0f);
-
-	float r1 = d(engine);
-	float r2 = d(engine);
-	Vector sample(r1, r2, 0.0f);
+	//pdf = sample.x * sample.y; // (normalized sample * area) / area
 
 	return mapSquareSampleToTrianglePoint(sample, vertex[0], vertex[1], vertex[2]);
 }
@@ -347,17 +331,19 @@ void SceneModel::computeArea()
 	}
 }
 
+void SceneModel::initSampler()
+{
+	sampler = IntegerSampler(0, triangleList.size() - 1);
+}
+
 Vector SceneModel::sampleShape(float & pdf)
 {
-	std::mt19937 generator(time(NULL));
-	std::uniform_int_distribution<unsigned int> distrib(0, triangleList.size());
-
-	unsigned int choosenTriangle = distrib(generator);
+	int choosenTriangle = sampler.sampleRect();
 
 	SceneTriangle & st = triangleList[choosenTriangle];
 	float trianglePdf;
 	Vector triangleFinalSample = st.sampleShape(trianglePdf);
 
-	pdf = trianglePdf * (1.0f / float(triangleList.size()));
+	pdf = trianglePdf * (float(choosenTriangle) / float(triangleList.size() - 1));
 	return triangleFinalSample;
 }

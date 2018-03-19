@@ -1,68 +1,103 @@
 #pragma once
 
-#include "Utils.h"
 #include <random>
-#include <vector>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
-/*
-* Based on the code from "Raytracing from Ground Up", from Kevin Suffern
-*
-* We generate samples in advance and store them to access them when needed
-* We also generate a configurable number of sample batches. The book author
-* states that "83" its a good number of batches that works very well in all
-* situations. This means that, for 4 samples Monte Carlo anti-aliasing, we
-* would generate 83 * 4 = 332 samples
-* We also shuffle the sample accesors to avoid pattern-like rendering when
-* sampling
-*/
+#include "Utils.h"
 
+template<class T>
 class Sampler
 {
 protected:
-	std::vector<Vector> hemiSamples;
-	std::vector<Vector> sphereSamples;
-	std::vector<Vector> planeSamples;
-	std::vector<unsigned int> suffledIndices;
-
 	std::default_random_engine generator;
-	std::uniform_real_distribution<float> ditrib;
 
-	unsigned int numSamples;
-	unsigned int numItems;	// Raytracing from ground up: A very good numer is "83"
-	unsigned int usedSamples;
-	unsigned int jump;
+	T intervalStart;
+	T intervalEnd;
 public:
-	Sampler(unsigned int numSamples, unsigned int numItems);
-	~Sampler();
+	Sampler(T is, T ie)
+	{
+		intervalStart = is;
+		intervalEnd = ie;
+	}
 
-	unsigned int getNumSamples() { return numSamples; }
+	Vector sampleSphere()
+	{
+		T a, b;
+		sample2D(a, b);
 
-	void mapToHemiSphere(float cosineExp);
-	void mapToUniformSphere();
+		float theta = 2.0f * float(M_PI) * a;
+		float phi = acos(1 - 2 * b);
+		float x = sin(phi) * cosf(theta);
+		float y = sinf(phi) * sinf(theta);
+		float z = cosf(phi);
 
-	Vector sampleSphere();
-	Vector sampleHemiSphere();
-	Vector samplePlane();
+		return Vector(x, y, z);
+	}
 
+	Vector sampleHemiSphere()
+	{
+		T a, b;
+		sample2D(a, b);
+
+		float sinTheta = sqrtf(1.0f - a * b);
+		float phi = 2.0f * float(M_PI) * b;
+		float x = sinTheta * cosf(phi);
+		float z = sinTheta * sinf(phi);
+
+		return Vector(x, a, z);
+	}
+
+	virtual Vector samplePlane()
+	{
+		T a, b;
+		sample2D(a, b);
+		return Vector(float(a), float(b), 0.0f);
+	}
+
+	T sampleRect()
+	{
+		T a;
+		sample1D(a);
+		return a;
+	}
 protected:
-	virtual void initSamples() = 0;
+	virtual void sample1D(T &a) { };
+	virtual void sample2D(T &a, T &b) { };
+};
+
+class IntegerSampler : public Sampler<int>
+{
 private:
-	void shuffleIndices();
+	std::uniform_int_distribution<int> distribution;
+public:
+	IntegerSampler(int istart = 0, int iend = 1) :Sampler(istart, iend)
+	{ 
+		distribution = std::uniform_int_distribution<int>(istart, iend);
+	}
+protected:
+	void sample1D(int &a);
+	void sample2D(int &a, int &b);
 };
 
-// Sampler used when the sample count is 1
-class DummySampler : public Sampler
+class FloatSampler : public Sampler<float>
 {
+private:
+	std::uniform_real_distribution<float> distribution;
 public:
-	DummySampler(unsigned int numSamples, unsigned int numItems) :Sampler(numSamples, numItems) { initSamples(); }
-	void initSamples();
+	FloatSampler(float intervalStart = 0.0f, float intervalEnd = 1.0f) :Sampler(intervalStart, intervalEnd) 
+	{
+		distribution = std::uniform_real_distribution<float>(intervalStart, intervalEnd);
+	}
+protected:
+	void sample1D(float &a);
+	void sample2D(float &a, float &b);
 };
 
-class MultiJitteredSampler : public Sampler
+class MultiJitteredSampler : public Sampler<float>
 {
-public:
-	MultiJitteredSampler(unsigned int numSamples, unsigned int numItems) :Sampler(numSamples, numItems) { initSamples(); }
-	void initSamples();
+private:
+	std::uniform_real_distribution<float> distribution;
 };
 
 //http://www.cs.princeton.edu/~funk/tog02.pdf
