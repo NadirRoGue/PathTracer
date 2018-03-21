@@ -95,11 +95,11 @@ public:
 			{
 				SceneLight *sceneLight = m_pScene->GetLight (n);
 		
-				glLightfv(GL_LIGHT0 + n, GL_SPECULAR, (GLfloat *)&sceneLight->color);
+				glLightfv(GL_LIGHT0 + n, GL_SPECULAR, (GLfloat *)&sceneLight->color.Normalize());
 				glLightf (GL_LIGHT0 + n, GL_CONSTANT_ATTENUATION, sceneLight->attenuationConstant);
 				glLightf (GL_LIGHT0 + n, GL_LINEAR_ATTENUATION, sceneLight->attenuationLinear);
 				glLightf (GL_LIGHT0 + n, GL_QUADRATIC_ATTENUATION, sceneLight->attenuationQuadratic);
-				glLightfv(GL_LIGHT0 + n, GL_DIFFUSE, (GLfloat *)&sceneLight->color);
+				glLightfv(GL_LIGHT0 + n, GL_DIFFUSE, (GLfloat *)&sceneLight->color.Normalize());
 				glLightfv(GL_LIGHT0 + n, GL_POSITION, (GLfloat *)&sceneLight->position);
 			}
 

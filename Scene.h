@@ -224,7 +224,7 @@ public:
 	{
 		int indice = lightSampler.sampleRect();
 
-		pdf = indice / GetNumLights();
+		pdf = 1.0f / float(GetNumLights() - 1);
 
 		return GetLight(indice);
 	}

@@ -270,8 +270,11 @@ Vector SceneTriangle::sampleShape(float &pdf)
 {
 	Vector sample = sampler.samplePlane();
 
-	pdf = 1.0f / area;
-	//pdf = sample.x * sample.y; // (normalized sample * area) / area
+	//uniform distributed pdf($) = 1 / (b - a)
+	//pdf(x) = 1 / (1 - 0) = 1
+	//pdf(y) = 1 / (1 - 0) = 1
+	//pdf = 1 * 1 = 1
+	pdf = 1.0f;
 
 	return mapSquareSampleToTrianglePoint(sample, vertex[0], vertex[1], vertex[2]);
 }

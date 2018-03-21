@@ -13,7 +13,7 @@ Vector MatteMaterial::computeAmbientRadiance(HitInfo & hitInfo)
 
 void MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	result = hitInfo.hittedMaterial.diffuse / float(M_PI);
+	result = hitInfo.hittedMaterial.diffuse;// / float(M_PI);
 }
 
 bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf)
@@ -26,7 +26,12 @@ bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay,
 	Vector scatteredDir = WorldUniformHemiSample(sample, zVector, yVector, xVector).Normalize();
 
 	scatteredRay = Ray(hitInfo.hitPoint + scatteredDir * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
-	pdf = 1.0f / (2.0f * float(M_PI));
+	// cosine weight hemisphere PDF = cos / PI
+	// diffuse-diffuse sampling PDF = 1 / 2*PI
+	// since rendering equation has cos, both terms cancel
+
+	// OPTIMIZATION: Cancel PI term with diffuse reflectance term
+	pdf = 1.0f / (2.0f);
 	return true;
 }
 

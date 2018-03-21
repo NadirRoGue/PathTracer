@@ -117,7 +117,7 @@ Vector RayTracer::shade(const Ray & ray)
 		// Direct lighting
 		for (unsigned int i = 0; i < scene->GetNumLights(); i++)
 		{
-			Vector diffuseC, specularC;
+			Vector diffuseC;
 			SceneLight * sl = scene->GetLight(i);
 
 			lightVector = (sl->position - info.hitPoint);
@@ -130,7 +130,7 @@ Vector RayTracer::shade(const Ray & ray)
 			// Diffuse reflectance
 			BRDF->computeDiffuseRadiance(info, scattered, diffuseC);
 
-			Lr = Lr + (I * (diffuseC + specularC) * cosValue);
+			Lr = Lr + (I * diffuseC * cosValue) / float(M_PI);
 		}
 
 		// Specular reflection
@@ -284,7 +284,7 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 
 			indirectLighting = indirectLighting / _RT_MC_BOUNCES_SAMPLES;
 
-			Lr = (Lr + ((I * cosValue + indirectLighting) * diffuseC) / (dirPdf));
+			Lr = (Lr + (((I * cosValue) / float(M_PI) + indirectLighting) * diffuseC) / (dirPdf));
 			fixGammut(Lr);
 		}
 
@@ -319,5 +319,10 @@ void MonteCarloRayTracer::samplePixel(int x, int y, float &st, float &ss, float 
 
 	st = float(sampledPixelX) / float(Scene::WINDOW_WIDTH);
 	ss = float(sampledPixelY) / float(Scene::WINDOW_HEIGHT);
-	pdf = 1.0f;//sample.y / sample.x;
+
+	//uniform distributed pdf($) = 1 / (b - a)
+	//pdf(x) = 1 / (1 - 0) = 1
+	//pdf(y) = 1 / (1 - 0) = 1
+	//pdf = 1 * 1 = 1
+	pdf = 1.0f;
 }
