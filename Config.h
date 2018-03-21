@@ -1,7 +1,7 @@
 #pragma once
 
 //#define _RT_DEBUG
-//#define _RT_MEASURE_PERFORMANCE
+#define _RT_MEASURE_PERFORMANCE
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -29,5 +29,5 @@
 // to account for transformations. Otherwise, affine transforms will be applied
 #define _RT_TRANSFORM_RAY_TO_LOCAL_SPACE 
 
-#define _RT_MC_PIXEL_SAMPLES 4
-#define _RT_MC_BOUNCES_SAMPLES 8
+#define _RT_MC_PIXEL_SAMPLES 8
+#define _RT_MC_BOUNCES_SAMPLES 4

@@ -5,7 +5,7 @@
 
 #include "Utils.h"
 #include "Ray.h"
-#include "BRDF.h"
+#include "Sampler.h"
 
 #include <iostream>
 
@@ -19,16 +19,12 @@ public:
 	std::string getName() { return name; }
 
 	virtual Vector computeAmbientRadiance(HitInfo & hitInfo) { return Vector(); }
-	virtual bool computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { result = Vector(); return false;  }
-	virtual bool computeSpecularRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { result = Vector(); return false;  }
+
+	virtual void computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { result = Vector(); }
+	virtual void scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt) { kr = 0.0f; kt = 0.0f; }
 
 	virtual bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf) { result = Vector(); return false; }
-
-	virtual bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
-	virtual bool scatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
-
-	virtual bool sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
-	virtual bool sampleScatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { return false; }
+	virtual void sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf) { kr = 0.0f; kt = 0.0f; }
 };
 
 // =====================================================================================================
@@ -36,83 +32,39 @@ public:
 class MatteMaterial : public PhysicalMaterial
 {
 private:
-	BRDF * ambientBRDF;
-	BRDF * diffuseBRDF;
-
+	FloatSampler sampler;
 public:
-	MatteMaterial(std::string name = "Matte") :PhysicalMaterial(name) { ambientBRDF = new DiffuseLambertian(); diffuseBRDF = new DiffuseLambertian(); }
-	~MatteMaterial() { delete ambientBRDF; delete diffuseBRDF; }
-
+	MatteMaterial(std::string name = "Matte") :PhysicalMaterial(name) { }
+	
 	Vector computeAmbientRadiance(HitInfo & hitInfo);
-	bool computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	void computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
 	bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
-};
-
-// =====================================================================================================
-
-class PlasticMaterial : public MatteMaterial
-{
-private:
-	BRDF * specularBRDF;
-
-public:
-	PlasticMaterial(std::string name = "Plastic") :MatteMaterial(name) { specularBRDF = new SpecularPhong(); }
-	~PlasticMaterial() { delete specularBRDF; }
-
-	bool computeSpecularRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
-};
-
-// =====================================================================================================
-
-class ReflexivePlasticMaterial : public PlasticMaterial
-{
-public:
-	ReflexivePlasticMaterial(std::string name = "ReflexivePlastic") : PlasticMaterial(name) {}
-
-	bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
-};
-
-// =====================================================================================================
-
-class MirrorMaterial : public MatteMaterial
-{
-public:
-	MirrorMaterial(std::string name = "Mirror") : MatteMaterial(name) {}
-
-	bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
 };
 
 // =====================================================================================================
 
 class MetallicMaterial : public PhysicalMaterial
 {
-private:
-	BRDF * specularBRDF;
 public:
-	MetallicMaterial(std::string name = "Metallic") : PhysicalMaterial(name) { specularBRDF = new SpecularPhong(); }
-	~MetallicMaterial() { delete specularBRDF; }
-
-	//bool computeSpecularRadiance(const Ray & incidentRay, HitInfo & hitInfo, const Vector & lightVector, Ray & scatteredRay, Vector & result);
-	bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
-	bool sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	MetallicMaterial(std::string name = "Metallic") : PhysicalMaterial(name) { }
+	
+	void scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt);
+	void sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf);
 };
 
 // =====================================================================================================
 
 class GlassMaterial : public PhysicalMaterial
 {
-private:
-	BRDF * transmissive;
-	BRDF * reflective;
 public:
-	GlassMaterial(std::string name = "Glass") : PhysicalMaterial(name) { transmissive = new DielectricTransmissionFresnel(); reflective = new SpecularReflectanceFresnel();  }
-	~GlassMaterial() { delete transmissive; delete reflective; }
-
-	bool scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
-	bool scatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
-
-	bool sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
-	bool sampleScatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	GlassMaterial(std::string name = "Glass") : PhysicalMaterial(name) { }
+	
+	void scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt);
+	void sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf);
+private:
+	bool computeSnellRefractedDirection(float inIOR, float outIOR, Vector inDir, Vector hitNormal, Vector & outDir);
+	float computeFresnelReflectedEnergy(float iIOR, Vector inDir, Vector inNormal, float oIOR, Vector outDir, Vector outNormal);
+	void attemptToTransmitRay(HitInfo & hitInfo, Vector & refracted, float &reflectedPercentage);
 };
 
 // =====================================================================================================

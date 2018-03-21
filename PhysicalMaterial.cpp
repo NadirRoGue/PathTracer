@@ -11,106 +11,162 @@ Vector MatteMaterial::computeAmbientRadiance(HitInfo & hitInfo)
 	return hitInfo.hittedMaterial.diffuse;
 }
 
-bool MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+void MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
 {
-	return diffuseBRDF->value(hitInfo, scatteredRay, result);
+	result = hitInfo.hittedMaterial.diffuse / float(M_PI);
 }
 
 bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf)
 {
-	diffuseBRDF->valueSample(hitInfo, scatteredRay, result, pdf);	
+	Vector zVector = hitInfo.hitNormal;
+	Vector yVector, xVector;
+	ComputeOrthoNormalBasis(zVector, yVector, xVector);
+
+	Vector sample = sampler.sampleHemiSphere();
+	Vector scatteredDir = WorldUniformHemiSample(sample, zVector, yVector, xVector).Normalize();
+
+	scatteredRay = Ray(hitInfo.hitPoint + scatteredDir * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
+	pdf = 1.0f / (2.0f * float(M_PI));
 	return true;
 }
 
-// =======================================================================================
-// Plastic
-
-bool PlasticMaterial::computeSpecularRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
-{
-	return specularBRDF->value(hitInfo, scatteredRay, result);
-}
-
-// ======================================================================================
-// Plastic with reflexions
-
-bool ReflexivePlasticMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
-{
-	Vector invRayDir(hitInfo.inRay.getDirection());
-	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal).Normalize();
-	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
-
-	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0f, 1.0f);
-	result = hitInfo.hittedMaterial.reflective;// *factor;
-	return factor > 0.0f;
-}
-
-// ======================================================================================
-// Mirror
-
-bool MirrorMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
-{
-	Vector invRayDir(hitInfo.inRay.getDirection());
-	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal).Normalize();
-	scatteredRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
-
-	float factor = clampValue(reflectedDir.Dot(hitInfo.hitNormal), 0.0f, 1.0f);
-	result = hitInfo.hittedMaterial.reflective * factor;
-
-	return factor > 0.0f;
-}
-
 // ======================================================================================
 
-bool MetallicMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+void MetallicMaterial::scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt)
 {
+	kt = 0.0f;
+	kr = 1.0f;
 	Vector invRayDir(hitInfo.inRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
-	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
-
-	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
-	result = hitInfo.hittedMaterial.reflective;
-
-	return factor > 0.0f;
+	reflectRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 }
 
-bool MetallicMaterial::sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+void MetallicMaterial::sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf)
 {
+	kt = 0.0f;
+	kr = 1.0f;
 	Vector invRayDir(hitInfo.inRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
-	scatteredRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
-
-	float factor = clampValue(scatteredRay.getDirection().Dot(hitInfo.hitNormal), 0.0, 1.0);
-	result = hitInfo.hittedMaterial.reflective;
-
-	return factor > 0.0f;
+	reflectRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
+	RPdf = 1.0f;
+	TPdf = 0.0f;
 }
 
 // ======================================================================================
 
-bool GlassMaterial::scatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+void GlassMaterial::scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt)
 {
-	return reflective->value(hitInfo, scatteredRay, result);
+	Vector refracted;
+	float percentage;
+	attemptToTransmitRay(hitInfo, refracted, percentage);
+
+	kr = percentage;
+	kt = 1.0f - percentage;
+
+	if (kt > 0.0f)
+	{
+		refractRay = Ray(hitInfo.hitPoint + refracted * _RT_BIAS, refracted, hitInfo.inRay.getDepth() + 1);
+	}
+
+	if (kr > 0.0f)
+	{
+		Vector invRayDir(hitInfo.inRay.getDirection());
+		Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
+		reflectRay = Ray(hitInfo.hitPoint + hitInfo.hitNormal * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
+	}
 }
 
-bool GlassMaterial::sampleScatterReflexion(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+void GlassMaterial::sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf)
 {
-	float pdf;
-	reflective->valueSample(hitInfo, scatteredRay, result, pdf);
-	result = result / pdf;
-	return pdf > 0.0f;
+	Vector refracted;
+	float percentage;
+	attemptToTransmitRay(hitInfo, refracted, percentage);
+	
+	kr = percentage;
+	kt = 1.0f - percentage;
+
+	bool outside = hitInfo.inRay.getDirection().Dot(hitInfo.hitNormal) < 0;
+
+	if (kt > 0.0f)
+	{
+		TPdf = kt;
+		Vector transOrigin = outside ? hitInfo.hitPoint - (hitInfo.hitNormal * _RT_BIAS) : hitInfo.hitPoint + (hitInfo.hitNormal * _RT_BIAS);
+		refractRay = Ray(transOrigin, refracted, hitInfo.inRay.getDepth() + 1);
+	}
+
+	if (kr > 0.0f)
+	{
+		RPdf = kr;
+		Vector reflOrigin = outside ? hitInfo.hitPoint + (hitInfo.hitNormal * _RT_BIAS) : hitInfo.hitPoint - (hitInfo.hitNormal * _RT_BIAS);
+		Vector invRayDir(hitInfo.inRay.getDirection());
+		Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
+		reflectRay = Ray(reflOrigin, reflectedDir, hitInfo.inRay.getDepth() + 1);
+	}
 }
 
-bool GlassMaterial::scatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+bool GlassMaterial::computeSnellRefractedDirection(float inIOR, float outIOR, Vector inDir, Vector hitNormal, Vector & outDir)
 {
-	return transmissive->value(hitInfo, scatteredRay, result);
+	float inCosAngle = inDir.Dot(hitNormal); // We use the outgoing normal so we can compute the cosine without negating the incident ray direction
+
+	if (inCosAngle > 0.0f)
+	{
+		hitNormal = hitNormal * -1.0f;
+	}
+
+	inCosAngle = fabs(inCosAngle);
+
+	float ioIOR = inIOR / outIOR;
+
+	// change sin(x) for 1 - cos^2(x)
+	// pow refraction index factor to be able to operate with cosines
+	float reflectance = 1.0f - (1.0f - inCosAngle * inCosAngle) * (ioIOR * ioIOR);
+	if (reflectance > 0.0f)
+	{
+		outDir = ((inDir * ioIOR) + hitNormal * (inCosAngle * ioIOR - sqrt(reflectance))).Normalize();
+		return true;
+	}
+
+	return false;
 }
 
-bool GlassMaterial::sampleScatterTransmission(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+float GlassMaterial::computeFresnelReflectedEnergy(float iIOR, Vector inDir, Vector inNormal, float oIOR, Vector outDir, Vector outNormal)
 {
-	float pdf;
-	transmissive->valueSample(hitInfo, scatteredRay, result, pdf);
-	result = result / pdf;
-	return pdf > 0.0f;
+	float cosi = fabs(inDir.Dot(outNormal));
+	float coso = outDir.Dot(outNormal);
+	
+	float rs = (iIOR * cosi - oIOR * coso) / (iIOR * cosi + oIOR * coso);
+	float rp = (iIOR * coso - oIOR * cosi) / (iIOR * coso + oIOR * cosi);
+
+	return 0.5f * (rs*rs + rp*rp);
+}
+
+void GlassMaterial::attemptToTransmitRay(HitInfo & hitInfo, Vector & refracted, float &reflectedPercentage)
+{
+	Vector inDir = hitInfo.inRay.getDirection();
+	Vector hitNormal = hitInfo.hitNormal;
+
+	bool exiting = clampValue(inDir.Dot(hitNormal), -1.0f, 1.0f) > 0.0f;
+
+	Vector outNormal = hitNormal;
+	float inIOR = 1.0f, outIOR = hitInfo.hittedMaterial.refraction_index.x;
+
+	if (exiting)
+	{
+		std::swap(inIOR, outIOR);
+	}
+	else
+	{
+		outNormal = outNormal * -1.0f;
+	}
+
+	if (computeSnellRefractedDirection(inIOR, outIOR, inDir, hitNormal, refracted))
+	{
+		reflectedPercentage = computeFresnelReflectedEnergy(inIOR, inDir, hitNormal, outIOR, refracted, outNormal);
+	}
+	else
+	{
+		reflectedPercentage = 1.0f;
+	}
 }
 
 // ======================================================================================
@@ -121,9 +177,6 @@ PhysicalMaterialTable * PhysicalMaterialTable::INSTANCE = new PhysicalMaterialTa
 PhysicalMaterialTable::PhysicalMaterialTable()
 {
 	registerMaterial(new MatteMaterial());
-	registerMaterial(new PlasticMaterial());
-	registerMaterial(new ReflexivePlasticMaterial());
-	registerMaterial(new MirrorMaterial());
 	registerMaterial(new MetallicMaterial());
 	registerMaterial(new GlassMaterial());
 }

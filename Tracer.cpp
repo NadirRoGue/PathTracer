@@ -110,6 +110,7 @@ Vector RayTracer::shade(const Ray & ray)
 		PhysicalMaterial * BRDF = PhysicalMaterialTable::getInstance().getMaterialByName(info.physicalMaterial);
 		if (BRDF == NULL)
 		{
+			// Clearly signal an object without proper material
 			return Vector(1.0, 0.0, 1.0);
 		}
 
@@ -120,45 +121,35 @@ Vector RayTracer::shade(const Ray & ray)
 			SceneLight * sl = scene->GetLight(i);
 
 			lightVector = (sl->position - info.hitPoint);
-			I = lightContribution(info, lightVector, sl);
-
+			I = lightContribution(info, lightVector, sl) / sl->color.Magnitude();
+			
 			lightVector.Normalize();
 			info.lightVector = lightVector;
 			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
 
 			// Diffuse reflectance
-			if (BRDF->computeDiffuseRadiance(info, scattered, diffuseC))
-			{
-				diffuseC = diffuseC * shade(scattered);
-			}
-
-			// Specular reflectance
-			if (BRDF->computeSpecularRadiance(info, scattered, specularC))
-			{
-				specularC = specularC * shade(scattered);
-			}
+			BRDF->computeDiffuseRadiance(info, scattered, diffuseC);
 
 			Lr = Lr + (I * (diffuseC + specularC) * cosValue);
 		}
 
 		// Specular reflection
-		Vector reflexion;
-		if (BRDF->scatterReflexion(info, scattered, reflexion))
+		float kr, kt;
+		Ray reflected, refracted;
+		BRDF->scatterReflexionAndRefraction(info, reflected, kr, refracted, kt);
+
+		if (kr > 0.0f)
 		{
-			Lr = Lr + (reflexion * shade(scattered));
+			Lr = Lr + (averageMaterialAtPoint.reflective * kr) * shade(reflected);
 		}
 
-		// Refraction
-		Vector refracted;
-		if (BRDF->scatterTransmission(info, scattered, refracted))
+		if (kt > 0.0f)
 		{
-			Lr = Lr + (refracted * shade(scattered));
+			Lr = Lr + (averageMaterialAtPoint.transparent * kt) * shade(refracted);
 		}
 
 		// Ambient lighting
 		Lr = Lr + BRDF->computeAmbientRadiance(info) * scene->GetBackground().ambientLight;
-
-		//fixGammut(Lr);
 
 		return Lr;
 	}
@@ -230,6 +221,23 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 		}
 
 		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
+		Vector diffuseC = averageMaterialAtPoint.diffuse;
+
+		if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE)
+		{
+			float max = std::max(diffuseC.x, std::max(diffuseC.y, diffuseC.z));
+			float p = russianRouletteSampler.sampleRect();
+
+			if (p > max)
+			{
+				return Vector();
+			}
+			else
+			{
+				fixGammut(diffuseC);
+			}
+		}
+
 		Vector Lr;
 		Ray scattered;
 		Vector lightVector;
@@ -262,20 +270,6 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			// Diffuse reflectance
 			BRDF->computeDiffuseRadiance(info, scattered, diffuseC);
 
-			// Russian roulette
-			Vector currentShading = (I * cosValue);
-			if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE)
-			{
-				Vector tempShading = currentShading * diffuseC;
-				float max = std::max(tempShading.x, std::max(tempShading.y, tempShading.z));
-				float p = russianRouletteSampler.sampleRect();
-
-				if (p > max)
-				{
-					return tempShading;
-				}
-			}
-
 			// Diffuse - Diffuse light transport
 			Vector indirectLighting;
 			for (unsigned int s = 0; s < _RT_MC_BOUNCES_SAMPLES; s++)
@@ -290,22 +284,23 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 
 			indirectLighting = indirectLighting / _RT_MC_BOUNCES_SAMPLES;
 
-			Lr = (Lr + ((currentShading + indirectLighting) * diffuseC) / (dirPdf));
+			Lr = (Lr + ((I * cosValue + indirectLighting) * diffuseC) / (dirPdf));
 			fixGammut(Lr);
 		}
 
-		// Specular reflection
-		Vector reflexion;
-		if (BRDF->scatterReflexion(info, scattered, reflexion))
+		// REFLECTION AND REFRACTION
+		float kr, RPdf, kt, TPdf;
+		Ray reflected, refracted;
+		BRDF->sampleScatterReflexionAndRefraction(info, reflected, kr, RPdf, refracted, kt, TPdf);
+
+		if (kr > 0.0f)
 		{
-			Lr = Lr + (reflexion * shade(scattered));
+			Lr = Lr + (averageMaterialAtPoint.reflective * kr) * shade(reflected);
 		}
 
-		// Refraction
-		Vector refracted;
-		if (BRDF->scatterTransmission(info, scattered, refracted))
+		if (kt > 0.0f)
 		{
-			Lr = Lr + (refracted * shade(scattered));
+			Lr = Lr + (averageMaterialAtPoint.transparent * kt) * shade(refracted);
 		}
 
 		return Lr;
@@ -319,10 +314,10 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 void MonteCarloRayTracer::samplePixel(int x, int y, float &st, float &ss, float &pdf)
 {
 	Vector sample = pixelSampler.samplePlane();
-	float sampledPixelX = float(x) + sample.x;
-	float sampledPixelY = float(y) + sample.y;
+	float sampledPixelX = float(x) + ((sample.x * 2.0f) - 1.0f);
+	float sampledPixelY = float(y) + ((sample.y * 2.0f) - 1.0f);
 
 	st = float(sampledPixelX) / float(Scene::WINDOW_WIDTH);
 	ss = float(sampledPixelY) / float(Scene::WINDOW_HEIGHT);
-	pdf = 1.0f; // (sampledPixelX * sampledPixelY) * pdfArea;
+	pdf = 1.0f;//sample.y / sample.x;
 }

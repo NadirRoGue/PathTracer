@@ -88,7 +88,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="3ds.cpp" />
-    <ClCompile Include="BRDF.cpp" />
     <ClCompile Include="PhysicalMaterial.cpp" />
     <ClCompile Include="Pic.cpp" />
     <ClCompile Include="RayTrace.cpp" />
@@ -104,7 +103,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="3ds.h" />
-    <ClInclude Include="BRDF.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="PhysicalMaterial.h" />
     <ClInclude Include="Ray.h" />
