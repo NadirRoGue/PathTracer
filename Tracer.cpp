@@ -6,19 +6,24 @@
 
 // =====================================================================
 
+// Computes the necessary data to cast rays from camera before starting rendering
 void Tracer::init()
 {
 	wrapper.wrap(scene->GetCamera(), Scene::WINDOW_WIDTH, Scene::WINDOW_HEIGHT);
 }
 
+// Checks whether the given ray intersect with any scene geometry
 HitInfo Tracer::intersect(const Ray & ray)
 {
 	HitInfo info;
+
+	// Initialize to false. If no objects are hit, it will remain as no hit at the end
 	HitInfo closer;
 	closer.hit = false;
 
 	Vector camPos = scene->GetCamera().GetPosition();
 
+	// Iterate over all scene objects
 	for (unsigned int i = 0; i < scene->GetNumObjects(); i++)
 	{
 		SceneObject * object = scene->GetObject(i);
@@ -28,6 +33,7 @@ HitInfo Tracer::intersect(const Ray & ray)
 		{
 			if (closer.hit)
 			{
+				// After 2+ hits, check to keep the closer one
 				float closerDist = (camPos - closer.hitPoint).Magnitude();
 				float currentDist = (camPos - info.hitPoint).Magnitude();
 
@@ -43,6 +49,7 @@ HitInfo Tracer::intersect(const Ray & ray)
 	return closer;
 }
 
+// Checks whether the light can be seen from the hitPoint contained in the HitInfo struct
 Vector Tracer::lightContribution(HitInfo & info, Vector & lightVector, SceneLight * light)
 {
 	float distToLight = lightVector.Magnitude();
@@ -53,6 +60,7 @@ Vector Tracer::lightContribution(HitInfo & info, Vector & lightVector, SceneLigh
 	Ray lightVisibilityTest(info.hitPoint + lightVector * _RT_BIAS, lightVector);
 	HitInfo visibilityInfo;
 	bool visible = true;
+	// Iterate over all scene objects to check for occlusions
 	for (unsigned int i = 0; i < sceneObjectCount && visible; i++)
 	{
 		SceneObject * so = scene->GetObject(i);
@@ -64,6 +72,7 @@ Vector Tracer::lightContribution(HitInfo & info, Vector & lightVector, SceneLigh
 
 		if (visibilityInfo.hit)
 		{
+			// check whether light or occluder is closer
 			float distanceToHit = (visibilityInfo.hitPoint - info.hitPoint).Magnitude();
 			if (distanceToHit < distToLight)
 			{
@@ -72,12 +81,13 @@ Vector Tracer::lightContribution(HitInfo & info, Vector & lightVector, SceneLigh
 		}
 	}
 
+	// If visible, return attenuated light color
 	if (visible)
 	{
 		float squaredDist = distToLight * distToLight;
 		return (light->color / (light->attenuationConstant + light->attenuationLinear * distToLight + light->attenuationQuadratic * squaredDist));
 	}
-	else
+	else // return black otherwise
 	{
 		return Vector();
 	}
@@ -85,6 +95,7 @@ Vector Tracer::lightContribution(HitInfo & info, Vector & lightVector, SceneLigh
 
 // =====================================================================
 
+// Launchs a ray from the camara given the screen pixel coordinates
 Vector RayTracer::doTrace(int screenX, int screenY)
 {
 	float t = float(screenX) / float(Scene::WINDOW_WIDTH);
@@ -95,10 +106,13 @@ Vector RayTracer::doTrace(int screenX, int screenY)
 	return shade(ray);
 }
 
+// Return the color of a given point by casting a ray in a direction from that point
+// and accumulating the radiance
 Vector RayTracer::shade(const Ray & ray)
 {
 	HitInfo info;
 
+	// Check whether this ray has already reached max depth
 	if (ray.getDepth() < _RT_MAX_BOUNCES && (info = intersect(ray)).hit)
 	{
 		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
@@ -161,6 +175,7 @@ Vector RayTracer::shade(const Ray & ray)
 
 // =====================================================================
 
+// Ray tracing but tracing 100 rays per pixel using a non uniform random "sampler"
 Vector SuperSamplingRayTracer::doTrace(int screenX, int screenY)
 {
 	srand(unsigned int(time(NULL)));
@@ -211,10 +226,21 @@ Vector MonteCarloRayTracer::doTrace(int screenX, int screenY)
 
 Vector MonteCarloRayTracer::shade(const Ray & ray)
 {
+	if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE && ray.getCosineWeight() >= 0.0f)
+	{
+		float p = russianRouletteSampler.sampleRect();
+
+		if (p > ray.getCosineWeight())
+		{
+			return Vector();
+		}
+	}
+
 	HitInfo info;
 
 	if (ray.getDepth() < _RT_MAX_BOUNCES && (info = intersect(ray)).hit)
 	{
+		// If its a light, return the color and stop bouncing
 		if (info.isLight)
 		{
 			return info.emission;
@@ -223,19 +249,10 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
 		Vector diffuseC = averageMaterialAtPoint.diffuse;
 
-		if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE)
+		// If this ray passed the roulette test, divide by its probability
+		if (ray.getCosineWeight() > 0.0f)
 		{
-			float max = std::max(diffuseC.x, std::max(diffuseC.y, diffuseC.z));
-			float p = russianRouletteSampler.sampleRect();
-
-			if (p > max)
-			{
-				return Vector();
-			}
-			else
-			{
-				fixGammut(diffuseC);
-			}
+			diffuseC = diffuseC / ray.getCosineWeight();
 		}
 
 		Vector Lr;
@@ -243,6 +260,7 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 		Vector lightVector;
 		Vector I;
 
+		// Purple color to identify wrong setted scene objects
 		PhysicalMaterial * BRDF = PhysicalMaterialTable::getInstance().getMaterialByName(info.physicalMaterial);
 		if (BRDF == NULL)
 		{
@@ -252,6 +270,8 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 		// Direct lighting
 		for (unsigned int i = 0; i < scene->GetNumLights(); i++)
 		{
+			// Get light vector by sampling a point in the light
+			// (for point light its always the same point)
 			Vector diffuseC, specularC;
 			SceneLight * sl = scene->GetLight(i);
 
@@ -274,7 +294,6 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			Vector indirectLighting;
 			for (unsigned int s = 0; s < _RT_MC_BOUNCES_SAMPLES; s++)
 			{
-				//Ray difRay;
 				float dPdf;
 				if(BRDF->sampleDiffuseRadiance(info, scattered, Vector(), dPdf))
 				{
@@ -284,6 +303,8 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 
 			indirectLighting = indirectLighting / _RT_MC_BOUNCES_SAMPLES;
 
+			// Compute total radiance. Only direct lighting is multiplied by cosine because
+			// it has been optimized to reduce computation needed for diffuse and indirect lighting pdf's
 			Lr = (Lr + (((I * cosValue) / float(M_PI) + indirectLighting) * diffuseC) / (dirPdf));
 			fixGammut(Lr);
 		}
@@ -291,26 +312,32 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 		// REFLECTION AND REFRACTION
 		float kr, RPdf, kt, TPdf;
 		Ray reflected, refracted;
-		// 0.25 + 0.5*Kr
-		// PR = kr/P
-		// PT = kt/(1 - P)
 		BRDF->sampleScatterReflexionAndRefraction(info, reflected, kr, RPdf, refracted, kt, TPdf);
 
-		if (ray.getDepth() < _RT_RUSSIAN_ROULETE_MIN_BOUNCE)
+		// Russian roulette depth reached and material has both reflection and refraction
+		if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE && kr > 0.0f && kt > 0.0f)
+		{
+			float reflectiveProbability = russianRouletteSampler.sampleRect();
+			if (kr > reflectiveProbability)
+			{
+				Lr = Lr + (averageMaterialAtPoint.reflective * kr) * shade(reflected) / kr;
+			}
+			else
+			{
+				Lr = Lr + (averageMaterialAtPoint.transparent * kt) * shade(refracted) / (1 - kr);
+			}
+		}
+		else  // No depth enough to apply russian roulette
 		{
 			if (kr > 0.0f)
 			{
 				Lr = Lr + (averageMaterialAtPoint.reflective * kr) * shade(reflected);
 			}
-
-			if (kt > 0.0f)
+			
+			if(kt > 0.0f)
 			{
 				Lr = Lr + (averageMaterialAtPoint.transparent * kt) * shade(refracted);
 			}
-		}
-		else // Apply russian roulette
-		{
-
 		}
 
 		return Lr;

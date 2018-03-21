@@ -10,16 +10,19 @@ private:
 	Vector direction;
 
 	unsigned int depth;
+	float cosineWeight;
 
 public:
 
-	Ray() :origin(Vector()), direction(Vector()), depth(0) {}
-	Ray(Vector origin, Vector direction) :origin(origin), direction(direction), depth(0) {}
-	Ray(Vector origin, Vector direction, unsigned int depth) : origin(origin), direction(direction), depth(depth) {}
+	Ray() :origin(Vector()), direction(Vector()), depth(0), cosineWeight(-1.0f) {}
+	Ray(Vector origin, Vector direction) :origin(origin), direction(direction), depth(0), cosineWeight(-1.0f) {}
+	Ray(Vector origin, Vector direction, unsigned int depth) : origin(origin), direction(direction), depth(depth), cosineWeight(-1.0f) {}
 
+	void setWeight(float weight) { cosineWeight = weight; }
 	const Vector & getOrigin() const { return origin; }
 	const Vector & getDirection() const { return direction; }
 	const unsigned int getDepth() const { return depth; }
+	const float getCosineWeight() const { return cosineWeight; }
 };
 
 struct HitInfo

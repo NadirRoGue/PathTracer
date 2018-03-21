@@ -27,6 +27,7 @@ bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay,
 	Vector scatteredDir = WorldUniformHemiSample(sample, zVector, yVector, xVector).Normalize();
 
 	scatteredRay = Ray(hitInfo.hitPoint + scatteredDir * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
+	scatteredRay.setWeight(fabs(zVector.Dot(scatteredDir)));
 	// cosine weight hemisphere PDF = cos / PI
 	// diffuse-diffuse sampling PDF = 1 / 2*PI
 	// since rendering equation has cos, both terms cancel
