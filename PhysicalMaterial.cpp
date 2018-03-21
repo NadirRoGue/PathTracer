@@ -11,9 +11,10 @@ Vector MatteMaterial::computeAmbientRadiance(HitInfo & hitInfo)
 	return hitInfo.hittedMaterial.diffuse;
 }
 
-void MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result)
+Vector MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo)
 {
-	result = hitInfo.hittedMaterial.diffuse;// / float(M_PI);
+	// OPTIMIZATION: Cancel PI term and apply only to direct lighting
+	return hitInfo.hittedMaterial.diffuse;// / float(M_PI);
 }
 
 bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf)
@@ -175,6 +176,17 @@ void GlassMaterial::attemptToTransmitRay(HitInfo & hitInfo, Vector & refracted, 
 }
 
 // ======================================================================================
+
+Vector RoughMaterial::computeAmbientRadiance(HitInfo & hitInfo)
+{
+	return hitInfo.hittedMaterial.diffuse;
+}
+
+Vector RoughMaterial::computeDiffuseRadiance(HitInfo & hitInfo)
+{
+	return hitInfo.hittedMaterial.diffuse;
+}
+
 // ======================================================================================
 
 PhysicalMaterialTable * PhysicalMaterialTable::INSTANCE = new PhysicalMaterialTable();
@@ -184,6 +196,7 @@ PhysicalMaterialTable::PhysicalMaterialTable()
 	registerMaterial(new MatteMaterial());
 	registerMaterial(new MetallicMaterial());
 	registerMaterial(new GlassMaterial());
+	registerMaterial(new RoughMaterial());
 }
 
 PhysicalMaterialTable::~PhysicalMaterialTable()

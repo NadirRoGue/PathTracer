@@ -20,7 +20,7 @@ public:
 
 	virtual Vector computeAmbientRadiance(HitInfo & hitInfo) { return Vector(); }
 
-	virtual void computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result) { result = Vector(); }
+	virtual Vector computeDiffuseRadiance(HitInfo & hitInfo) { return Vector(); }
 	virtual void scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt) { kr = 0.0f; kt = 0.0f; }
 
 	virtual bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf) { result = Vector(); return false; }
@@ -28,7 +28,7 @@ public:
 };
 
 // =====================================================================================================
-
+// Lambertian implementation
 class MatteMaterial : public PhysicalMaterial
 {
 private:
@@ -37,12 +37,12 @@ public:
 	MatteMaterial(std::string name = "Matte") :PhysicalMaterial(name) { }
 	
 	Vector computeAmbientRadiance(HitInfo & hitInfo);
-	void computeDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector & result);
+	Vector computeDiffuseRadiance(HitInfo & hitInfo);
 	bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
 };
 
 // =====================================================================================================
-
+// Perfect specular implementation
 class MetallicMaterial : public PhysicalMaterial
 {
 public:
@@ -53,7 +53,7 @@ public:
 };
 
 // =====================================================================================================
-
+// Dielectric implementation
 class GlassMaterial : public PhysicalMaterial
 {
 public:
@@ -65,6 +65,18 @@ private:
 	bool computeSnellRefractedDirection(float inIOR, float outIOR, Vector inDir, Vector hitNormal, Vector & outDir);
 	float computeFresnelReflectedEnergy(float iIOR, Vector inDir, Vector inNormal, float oIOR, Vector outDir, Vector outNormal);
 	void attemptToTransmitRay(HitInfo & hitInfo, Vector & refracted, float &reflectedPercentage);
+};
+
+// =====================================================================================================
+// Microfacets implementation
+class RoughMaterial : public PhysicalMaterial
+{
+public:
+	RoughMaterial(std::string name = "Rough") : PhysicalMaterial(name) { }
+
+	Vector computeAmbientRadiance(HitInfo & hitInfo);
+	Vector computeDiffuseRadiance(HitInfo & hitInfo);
+	//bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
 };
 
 // =====================================================================================================

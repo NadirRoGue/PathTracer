@@ -128,7 +128,7 @@ Vector RayTracer::shade(const Ray & ray)
 			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
 
 			// Diffuse reflectance
-			BRDF->computeDiffuseRadiance(info, scattered, diffuseC);
+			diffuseC = BRDF->computeDiffuseRadiance(info);
 
 			Lr = Lr + (I * diffuseC * cosValue) / float(M_PI);
 		}
@@ -268,17 +268,17 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
 
 			// Diffuse reflectance
-			BRDF->computeDiffuseRadiance(info, scattered, diffuseC);
+			diffuseC = BRDF->computeDiffuseRadiance(info);
 
 			// Diffuse - Diffuse light transport
 			Vector indirectLighting;
 			for (unsigned int s = 0; s < _RT_MC_BOUNCES_SAMPLES; s++)
 			{
-				Ray difRay;
+				//Ray difRay;
 				float dPdf;
-				if(BRDF->sampleDiffuseRadiance(info, difRay, Vector(), dPdf))
+				if(BRDF->sampleDiffuseRadiance(info, scattered, Vector(), dPdf))
 				{
-					indirectLighting = indirectLighting + (shade(difRay) / dPdf);
+					indirectLighting = indirectLighting + (shade(scattered) / dPdf);
 				}
 			}
 
