@@ -291,16 +291,26 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 		// REFLECTION AND REFRACTION
 		float kr, RPdf, kt, TPdf;
 		Ray reflected, refracted;
+		// 0.25 + 0.5*Kr
+		// PR = kr/P
+		// PT = kt/(1 - P)
 		BRDF->sampleScatterReflexionAndRefraction(info, reflected, kr, RPdf, refracted, kt, TPdf);
 
-		if (kr > 0.0f)
+		if (ray.getDepth() < _RT_RUSSIAN_ROULETE_MIN_BOUNCE)
 		{
-			Lr = Lr + (averageMaterialAtPoint.reflective * kr) * shade(reflected);
-		}
+			if (kr > 0.0f)
+			{
+				Lr = Lr + (averageMaterialAtPoint.reflective * kr) * shade(reflected);
+			}
 
-		if (kt > 0.0f)
+			if (kt > 0.0f)
+			{
+				Lr = Lr + (averageMaterialAtPoint.transparent * kt) * shade(refracted);
+			}
+		}
+		else // Apply russian roulette
 		{
-			Lr = Lr + (averageMaterialAtPoint.transparent * kt) * shade(refracted);
+
 		}
 
 		return Lr;
