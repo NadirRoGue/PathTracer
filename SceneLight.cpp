@@ -24,7 +24,7 @@ Vector AreaLight::sampleDirection(Vector &fromPoint, float &pdf)
 	//pdf(pos) = from shape->sampleShape
 	//pdf(choosen shape) = 1 / (shapes.length - 1) (or (shapes.lenght - 1) - 0)
 	//pdf = pdf(pos) * pdf(choosen shape)
-	float shapePdf = shapes.size() < 2 ? 1 : shapes.size() - 1;
+	float shapePdf = shapes.size() < 2 ? 1.0f : float(shapes.size() - 1);
 	pdf = posPdf * (1.0f / shapePdf);
 	return (pos - fromPoint);
 }

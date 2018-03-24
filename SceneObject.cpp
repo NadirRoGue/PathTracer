@@ -283,6 +283,15 @@ Vector SceneTriangle::sampleShape(float &pdf)
 
 void SceneModel::testIntersection(const Ray & ray, HitInfo & outInfo)
 {
+#ifdef _RT_USE_BB
+	if (!box.testIntersect(ray))
+	{
+		outInfo.hit = false;
+		return;
+	}
+	//printf("Hit\n");
+#endif
+
 	HitInfo closer;
 	closer.hit = false;
 	for (SceneTriangle & st : triangleList)
@@ -321,6 +330,43 @@ void SceneModel::applyAffineTransformations()
 #ifndef _RT_TRANSFORM_RAY_TO_LOCAL_SPACE
 	position = rotation = Vector();
 	scale = Vector(1.0f, 1.0f, 1.0f);
+#endif
+
+#ifdef _RT_USE_BB
+
+	float hx, hy, hz;
+	hx = hy = hz = -std::numeric_limits<float>().max();
+
+	float lx, ly, lz;
+	lx = ly = lz = std::numeric_limits<float>().max();
+
+	for (auto & triangle : triangleList)
+	{
+		for (auto & vr : triangle.vertex)
+		{
+			Vector v = triangle.localToWorldMatrix * vr;
+			if (v.x > hx)
+				hx = v.x;
+			if (v.x < lx)
+				lx = v.x;
+
+			if (v.y > hy)
+				hy = v.y;
+			if (v.y < ly)
+				ly = v.y;
+
+			if (v.z > hz)
+				hz = v.z;
+			if (v.z < lz)
+				lz = v.z;
+		}
+	}
+
+	Vector highest(hx, hy, hz);
+	Vector lowest(lx, ly, lz);
+
+	box.setCorners(highest, lowest);
+
 #endif
 }
 

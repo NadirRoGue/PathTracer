@@ -5,6 +5,7 @@
 #include "Utils.h"
 #include "Ray.h"
 #include "Sampler.h"
+#include "BoundingBox.h"
 
 namespace SceneObjectType
 {
@@ -147,6 +148,9 @@ class SceneModel : public SceneObject
 {
 private:
 	IntegerSampler sampler;
+#ifdef _RT_USE_BB
+	BoundingBox box;
+#endif
 public:
 	std::string filename;
 	std::vector<SceneTriangle> triangleList;

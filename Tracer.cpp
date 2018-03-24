@@ -295,17 +295,22 @@ Vector MonteCarloRayTracer::shade(const Ray & ray)
 			for (unsigned int s = 0; s < _RT_MC_BOUNCES_SAMPLES; s++)
 			{
 				float dPdf;
-				if(BRDF->sampleDiffuseRadiance(info, scattered, Vector(), dPdf))
+				Vector scatteredResult (1.0f, 1.0f, 1.0f);
+				if(BRDF->sampleDiffuseRadiance(info, scattered, scatteredResult, dPdf))
 				{
-					indirectLighting = indirectLighting + (shade(scattered) / dPdf);
+					indirectLighting = indirectLighting + (scatteredResult * shade(scattered) / dPdf);
 				}
 			}
+
+			//diffuseC = diffuseC + (specularContribution / _RT_MC_BOUNCES_SAMPLES);
 
 			indirectLighting = indirectLighting / _RT_MC_BOUNCES_SAMPLES;
 
 			// Compute total radiance. Only direct lighting is multiplied by cosine because
 			// it has been optimized to reduce computation needed for diffuse and indirect lighting pdf's
-			Lr = (Lr + (((I * cosValue) / float(M_PI) + indirectLighting) * diffuseC) / (dirPdf));
+			//
+			Lr = (Lr + ((I * cosValue * diffuseC) + indirectLighting) / (dirPdf));
+			//Lr = (Lr + (((I * cosValue) + indirectLighting) * diffuseC) / (dirPdf));
 			fixGammut(Lr);
 		}
 

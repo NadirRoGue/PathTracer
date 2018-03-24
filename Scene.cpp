@@ -111,6 +111,7 @@ bool Scene::Load (char *filename)
 			tempMaterial->transparent = ParseColor (tempMaterialNode.getChildNode("transparent"));
 			tempMaterial->reflective = ParseColor (tempMaterialNode.getChildNode("reflective"));
 			tempMaterial->refraction_index = ParseColor (tempMaterialNode.getChildNode("refraction_index"));
+			tempMaterial->roughness = atof(CHECK_ATTR(tempMaterialNode.getChildNode("Roughness").getAttribute("val")));
 			
 			if (tempMaterial->texture != "")
 			{

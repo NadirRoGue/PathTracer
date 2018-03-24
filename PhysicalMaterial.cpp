@@ -1,7 +1,7 @@
 #include "PhysicalMaterial.h"
 
 #include "Config.h"
-#include <iostream>
+#include <algorithm>
 
 // =======================================================================================
 // Matte
@@ -14,7 +14,7 @@ Vector MatteMaterial::computeAmbientRadiance(HitInfo & hitInfo)
 Vector MatteMaterial::computeDiffuseRadiance(HitInfo & hitInfo)
 {
 	// OPTIMIZATION: Cancel PI term and apply only to direct lighting
-	return hitInfo.hittedMaterial.diffuse;// / float(M_PI);
+	return hitInfo.hittedMaterial.diffuse / float(M_PI);
 }
 
 bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf)
@@ -33,7 +33,8 @@ bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay,
 	// since rendering equation has cos, both terms cancel
 
 	// OPTIMIZATION: Cancel PI term with diffuse reflectance term
-	pdf = 1.0f / (2.0f);
+	pdf = 1.0f / (2.0f * float(M_PI));
+	result = computeDiffuseRadiance(hitInfo);
 	return true;
 }
 
@@ -185,7 +186,150 @@ Vector RoughMaterial::computeAmbientRadiance(HitInfo & hitInfo)
 
 Vector RoughMaterial::computeDiffuseRadiance(HitInfo & hitInfo)
 {
-	return hitInfo.hittedMaterial.diffuse;
+	Vector diffuseTerm =  hitInfo.hittedMaterial.diffuse / float(M_PI);
+
+	Vector n = hitInfo.hitNormal;
+	Vector l = hitInfo.lightVector;
+	Vector v = Vector(hitInfo.inRay.getDirection()) * -1.0f;
+	Vector h = (l + v).Normalize();
+	float roughness = hitInfo.hittedMaterial.roughness;
+
+	float F = conductorFresnel(l, h, hitInfo.hittedMaterial.refraction_index.x); // m o h
+	float G = geometricSmithSchlick(v, h, n, l, roughness); // m o h
+	float D = distributionBeckman(h, n, roughness); // m o h
+
+	float bottom = 4.0f * std::max(0.0f, n.Dot(l)) * std::max(0.0f, n.Dot(v));
+	
+	float fr = 0.0f;
+	if (bottom > 0.0f)
+	{
+		fr = std::max((F * G * D) / bottom, 0.0f);
+	}
+
+	// Energy conservation
+	float diffuseFresnelV = 1.0f - F;
+
+	return diffuseTerm * diffuseFresnelV + Vector(1.0f, 1.0f, 1.0f) * fr;
+}
+
+bool RoughMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf)
+{
+	float roughness = hitInfo.hittedMaterial.roughness;
+
+	Vector v = hitInfo.inRay.getDirection();
+	Vector invV = v * -1.0f;
+	Vector n = hitInfo.hitNormal;
+	Vector m = sampleMicrofacetNormal(n, roughness);
+	Vector l = hitInfo.lightVector;
+	Vector h = (m + invV).Normalize();
+
+	Vector scatteredDir = v.reflect(m);
+
+	float F = conductorFresnel(scatteredDir, h, hitInfo.hittedMaterial.refraction_index.x);
+	float G = geometricSmithSchlick(invV, h, n, scatteredDir, roughness);
+	
+	float bottom = clampValue(4.0f * n.Dot(scatteredDir) * n.Dot(invV), 0.0f, 1.0f);
+
+	float cos = clampValue(m.Dot(n), 0.0f, 1.0f);
+	float sin = sqrtf(1.0f - cos*cos);
+
+	float fr = 0.0f;
+	if (bottom > 0.0f)
+	{
+		fr = std::max((F * G * sin) / bottom, 0.0f);
+	}
+
+	// Energy conservation
+	float diffuseFresnelV = 1.0f - conductorFresnel(scatteredDir, n, hitInfo.hittedMaterial.refraction_index.x);
+
+	result = hitInfo.hittedMaterial.diffuse * diffuseFresnelV + Vector(1.0f, 1.0f, 1.0f) * fr;
+
+	//std::cout << result.x << ", " << result.y << ", " << result.z << std::endl;
+
+	scatteredRay = Ray(hitInfo.hitPoint + scatteredDir * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
+	scatteredRay.setWeight(fabs(m.Dot(scatteredDir)));
+	
+	//pdf = 1.0f / roughness;
+	pdf = fabs(m.Dot(n));
+
+	return pdf > 0.0f;
+}
+
+float RoughMaterial::computeXi(float a)
+{
+	return a > 0.0f? 1.0f : 0.0f;
+}
+
+float RoughMaterial::geometricSmithSchlick(Vector v, Vector h, Vector n, Vector l, float roughness)
+{
+	float cosnv = n.Dot(v);
+	float cosnl = n.Dot(l);
+	float coshv = h.Dot(v);
+	float coshl = h.Dot(l);
+
+	float clampCosNv = std::max(0.0f, cosnv);
+
+	float tannv = tanf(acosf(clampCosNv));
+
+	float a = 1.0f / (roughness * tannv);
+
+	// Shlick aproximation
+	float result = 1.0f;
+	if (a < 1.6f)
+	{
+		result = (3.535f*a + 2.181f*a*a) / (1.0f + 2.276f*a + 2.577f*a*a);
+	}
+
+	return (computeXi(coshl / cosnl) * result) * (computeXi(coshv / cosnv) * result);
+}
+
+float RoughMaterial::conductorFresnel(Vector l, Vector h, float ior)
+{
+	float R0 = (1.0f - ior) / (1.0f + ior);
+	R0 *= R0;
+
+	float cosTheta = 1.0f - fabs(l.Dot(h));
+
+	return R0 + (1.0f - R0)*cosTheta*cosTheta*cosTheta*cosTheta*cosTheta;
+}
+
+float RoughMaterial::distributionBeckman(Vector h, Vector n, float roughness)
+{
+	float dotnh = std::max(0.0f, (n.Dot(h)));
+	
+	if (dotnh == 0.0f)
+		return 0.0f;
+
+	if (roughness <= 0.0f)
+		return 0.0f;
+
+	float dotnh2 = dotnh * dotnh;
+	float m2 = roughness * roughness;
+	float expValue = (dotnh2 - 1.0f) / (m2*dotnh2);
+
+	float e = std::exp(expValue);
+	
+	return e / (float(M_PI)*m2*dotnh2*dotnh2);
+}
+
+Vector RoughMaterial::sampleMicrofacetNormal(Vector n, float roughness)
+{
+	float a = sampler.sampleRect();
+	float b = sampler.sampleRect();
+
+	float theta = atan(sqrtf(-(roughness*roughness)*log(1.0f - a)));
+	float phi = 2.0f * float(M_PI) * b;
+
+	float sinTheta = sinf(theta);
+	float x = sinTheta * cosf(phi);
+	float z = sinTheta * sinf(phi);
+
+	Vector local(x, a, z);
+
+	Vector yVector, xVector;
+	ComputeOrthoNormalBasis(n, yVector, xVector);
+
+	return WorldUniformHemiSample(local, n, yVector, xVector).Normalize();
 }
 
 // ======================================================================================

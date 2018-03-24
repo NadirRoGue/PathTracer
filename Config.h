@@ -30,5 +30,7 @@
 // to account for transformations. Otherwise, affine transforms will be applied
 #define _RT_TRANSFORM_RAY_TO_LOCAL_SPACE 
 
-#define _RT_MC_PIXEL_SAMPLES 8
+#define _RT_MC_PIXEL_SAMPLES 4
 #define _RT_MC_BOUNCES_SAMPLES 4
+
+//#define _RT_USE_BB

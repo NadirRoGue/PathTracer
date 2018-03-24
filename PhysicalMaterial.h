@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <map>
@@ -68,15 +68,33 @@ private:
 };
 
 // =====================================================================================================
-// Microfacets implementation
+// Microfacets implementation for conductors using GGX
 class RoughMaterial : public PhysicalMaterial
 {
+private:
+	FloatSampler sampler;
 public:
 	RoughMaterial(std::string name = "Rough") : PhysicalMaterial(name) { }
 
 	Vector computeAmbientRadiance(HitInfo & hitInfo);
 	Vector computeDiffuseRadiance(HitInfo & hitInfo);
-	//bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
+	bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
+protected:
+	//χ(a) Equal to one if a > 0 and zero if a ≤ 0
+	float computeXi(float a);
+
+	//Geometry term component
+	// Gi (geometric term component, G = Gi(eyevector, microfacetNormal)*Gi(lightVector, microfacetNormal)
+	float geometricSmithSchlick(Vector v, Vector h, Vector n, Vector l, float roughness);
+
+	// F (fresnel term, for conductors)
+	float conductorFresnel(Vector l, Vector h, float ior);
+
+	// D (Normal distribution, using GGX)
+	float distributionBeckman(Vector h, Vector n, float roughness);
+
+	// Samples a microfacet normal using uniform distribution
+	Vector sampleMicrofacetNormal(Vector n, float roughness);
 };
 
 // =====================================================================================================

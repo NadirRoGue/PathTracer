@@ -19,6 +19,7 @@ public:
 	Vector reflective;
 	Vector refraction_index;
 	Vector emissive;
+	float roughness;
 	
 	// -- Constructors & Destructors --
 	SceneMaterial(void) : tex(NULL)

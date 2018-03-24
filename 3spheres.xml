@@ -36,8 +36,10 @@
 		<!-- Designed for matte -->
 		<material name="MatteGray">
 			<texture filename=""/>
-			<diffuse red="0.5" green="0.5" blue="0.5"/>
-			<specular red="0.0" green="0.0" blue="0.0" shininess="2.0"/>
+			<diffuse red="0.75" green="0.75" blue="0.75"/>
+			<specular red="0.5" green="0.5" blue="0.5" shininess="2.0"/>
+			<refraction_index red="1.5" green="0.0" blue="0.0"/>
+			<roughness val="0.1"/>
 		</material>
 		
 		<material name="GreenMatte">
@@ -100,8 +102,9 @@
 	<!-- List of Scene Objects -->
 	<object_list>
 		<!-- Sphere Object -->
+		<!--
 		<sphere name="Sphere" material="MatteGray" radius="1.0">
-			<physicalMaterial name="Matte" />
+			<physicalMaterial name="Rough" />
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="0.0" z="0.0"/>
 			<position x="-2.5" y="0.5" z="0.0"/>
@@ -127,7 +130,7 @@
 
 			<center x="0.0" y="0.0" z="0.0"/>
 		</sphere>
-		
+		-->
 		<triangle name="LightTriangle1" lightId="2">
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="0.0" z="0.0"/>
@@ -433,7 +436,7 @@
 			</vertex>
 			
 		</triangle>
-		
+		<!--
 		<model filename="objects/cube.3ds" name="cube" material="Purple">
 			<physicalMaterial name="Matte" />
 			<scale x="2.0" y="1.0" z="1.0"/>
@@ -446,14 +449,14 @@
 			<rotation x="0.0" y="-30.0" z="0.0"/>
 			<position x="0.0" y="1.0" z="0.0"/>
 		</model>
-		<!--
-		<model filename="objects/dragon2.obj" name="cube" material="MatteGreen">
+		-->
+		<model filename="objects/dragon2.obj" name="cube" material="WhiteMatte">
 			<physicalMaterial name="Matte" />
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="180.0" z="0.0"/>
 			<position x="0.0" y="2.5" z="0.0"/>
 		</model>
-		-->
+		
 	</object_list>
 	
 <!-- End of Scene -->
