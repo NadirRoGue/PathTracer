@@ -21,10 +21,8 @@ void BoundingBox::buildPlanes(Vector &highestV, Vector &lowestV)
 
 	if (test.Dot(front.normal) < 0.0f)
 	{
-		std::cout << "Corrected front normal" << std::endl;
 		front.normal = front.normal * -1.0f;
 	}
-
 	findHighestLowestValues(fronttopLeft, fronttopRight, frontbottomLeft, frontbottomRight, front);
 
 	// back side
@@ -38,10 +36,8 @@ void BoundingBox::buildPlanes(Vector &highestV, Vector &lowestV)
 	test = (back.corner - center).Normalize();
 	if (test.Dot(back.normal) < 0.0f)
 	{
-		std::cout << "Corrected back normal" << std::endl;
 		back.normal = back.normal * -1.0f;
 	}
-
 	findHighestLowestValues(backtopRight, backtopLeft, backbottomLeft, backbottomRight, back);
 
 	// left side
@@ -55,10 +51,8 @@ void BoundingBox::buildPlanes(Vector &highestV, Vector &lowestV)
 	test = (left.corner - center).Normalize();
 	if (test.Dot(left.normal) < 0.0f)
 	{
-		std::cout << "Corrected left normal" << std::endl;
 		left.normal = left.normal * -1.0f;
 	}
-
 	findHighestLowestValues(lefttopRight, lefttopLeft, leftbottomLeft, leftbottomRight, left);
 
 	// right side
@@ -72,10 +66,8 @@ void BoundingBox::buildPlanes(Vector &highestV, Vector &lowestV)
 	test = (right.corner - center).Normalize();
 	if (test.Dot(right.normal) < 0.0f)
 	{
-		std::cout << "Corrected right normal" << std::endl;
 		right.normal = right.normal * -1.0f;
 	}
-
 	findHighestLowestValues(righttopLeft, righttopRight, rightbottomLeft, rightbottomRight, right);
 
 	// top side
@@ -89,10 +81,8 @@ void BoundingBox::buildPlanes(Vector &highestV, Vector &lowestV)
 	test = (top.corner - center).Normalize();
 	if (test.Dot(top.normal) < 0.0f)
 	{
-		std::cout << "Corrected top normal" << std::endl;
 		top.normal = top.normal * -1.0f;
 	}
-
 	findHighestLowestValues(toptopRight, toptopLeft, topbottomLeft, topbottomRight, top);
 
 	// bottom side
@@ -106,10 +96,8 @@ void BoundingBox::buildPlanes(Vector &highestV, Vector &lowestV)
 	test = (bottom.corner - center).Normalize();
 	if (test.Dot(bottom.normal) < 0.0f)
 	{
-		std::cout << "Corrected bottom normal" << std::endl;
 		bottom.normal = bottom.normal * -1.0f;
 	}
-
 	findHighestLowestValues(bottomtopRight, bottomtopLeft, bottombottomLeft, bottombottomRight, bottom);
 
 	planes.push_back(front);
@@ -148,6 +136,4 @@ void BoundingBox::findHighestLowestValues(Vector &a, Vector &b, Vector &c, Vecto
 		else if (v.z < plane.lz)
 			plane.lz = v.z;
 	}
-
-	std::cout << "Higest " << plane.hx << ", " << plane.hy << ", " << plane.hz << std::endl << "Lowest " << plane.lx << ", " << plane.ly << ", " << plane.lz << std::endl;
 }

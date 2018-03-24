@@ -50,43 +50,22 @@ public:
 				if (planeIntersectResult > 0.0f)
 				{
 					Vector hittedPoint = o + (d * planeIntersectResult);
+					float x = hittedPoint.x + _RT_BIAS;
+					float y = hittedPoint.y + _RT_BIAS;
+					float z = hittedPoint.z + _RT_BIAS;
 
-					float x = hittedPoint.x;
-					float y = hittedPoint.y;
-					float z = hittedPoint.z;
+					float minx = hittedPoint.x - _RT_BIAS;
+					float miny = hittedPoint.y - _RT_BIAS;
+					float minz = hittedPoint.z - _RT_BIAS;
 					
-					if (x >= plane.lx && x <= plane.hx
-						&& y >= plane.ly && y <= plane.hy
-						&& z >= plane.lz && z <= plane.hz)
+					if (x >= plane.lx && minx <= plane.hx
+						&& y >= plane.ly && miny <= plane.hy
+						&& z >= plane.lz && minz <= plane.hz)
 					{
-						//std::cout << "Point " << hittedPoint.x << ", " << hittedPoint.y << ", " << hittedPoint.z << std::endl;
 						return true;
 					}
 				}
 			}
-			/*
-			if ((invdotNR = invN.Dot(d)) != 0.0f)
-			{
-				float nc = invN.Dot(o);
-				float np = invN.Dot(plane.corner);
-				float planeIntersectResult = (nc - np) / dotNR;
-				if (planeIntersectResult > 0.0f)
-				{
-					Vector hittedPoint = o + (d * planeIntersectResult);
-
-					float x = hittedPoint.x;
-					float y = hittedPoint.y;
-					float z = hittedPoint.z;
-
-					if (x >= plane.lx && x <= plane.hx
-						&& y >= plane.ly && y <= plane.hy
-						&& z >= plane.lz && z <= plane.hz)
-					{
-						//std::cout << "Point " << hittedPoint.x << ", " << hittedPoint.y << ", " << hittedPoint.z << std::endl;
-						return true;
-					}
-				}
-			}*/
 		}
 
 		return false;

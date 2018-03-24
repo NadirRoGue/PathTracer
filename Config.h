@@ -33,4 +33,4 @@
 #define _RT_MC_PIXEL_SAMPLES 4
 #define _RT_MC_BOUNCES_SAMPLES 4
 
-//#define _RT_USE_BB
+#define _RT_USE_BB

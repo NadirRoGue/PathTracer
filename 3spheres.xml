@@ -230,7 +230,7 @@
 				<texture u="0.0" v="1.0"/>
 			</vertex>
 		</triangle>
-		-->
+		
 		<triangle name="FloorTriangle1">
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="0.0" z="0.0"/>
@@ -436,6 +436,7 @@
 			</vertex>
 			
 		</triangle>
+		
 		<!--
 		<model filename="objects/cube.3ds" name="cube" material="Purple">
 			<physicalMaterial name="Matte" />
