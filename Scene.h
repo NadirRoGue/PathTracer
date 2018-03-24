@@ -99,7 +99,7 @@ public:
    static const int WINDOW_HEIGHT, WINDOW_WIDTH;
    static bool supersample;
    static bool montecarlo;
-
+   static bool boundingbox;
 private:
 	std::string m_Desc, m_Author;
 	SceneBackground m_Background;

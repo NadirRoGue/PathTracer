@@ -148,10 +148,10 @@ class SceneModel : public SceneObject
 {
 private:
 	IntegerSampler sampler;
+public:
 #ifdef _RT_USE_BB
 	BoundingBox box;
 #endif
-public:
 	std::string filename;
 	std::vector<SceneTriangle> triangleList;
 	float area;

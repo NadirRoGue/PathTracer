@@ -8,7 +8,6 @@ class Ray
 private:
 	Vector origin;
 	Vector direction;
-
 	unsigned int depth;
 	float cosineWeight;
 
@@ -37,4 +36,5 @@ struct HitInfo
 	SceneMaterial hittedMaterial;
 	std::string physicalMaterial;
 	float u, v;
+	float distance;
 } typedef HitInfo;

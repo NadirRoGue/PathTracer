@@ -53,6 +53,16 @@ protected:
 
 // =================================================================================
 
+class BBTracer : public RayTracer
+{
+public:
+	BBTracer(Scene * scene):RayTracer(scene){}
+protected:
+	Vector shade(const Ray & ray);
+};
+
+// =================================================================================
+
 class SuperSamplingRayTracer : public RayTracer
 {
 public:

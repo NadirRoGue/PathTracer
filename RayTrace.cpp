@@ -70,6 +70,10 @@ void RayTrace::initializeTracer()
 	{
 		tracer = new SuperSamplingRayTracer(&m_Scene);
 	}
+	else if (Scene::boundingbox)
+	{
+		tracer = new BBTracer(&m_Scene);
+	}
 	else
 	{
 		tracer = new RayTracer(&m_Scene);

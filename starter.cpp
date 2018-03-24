@@ -48,6 +48,7 @@ const int Scene::WINDOW_HEIGHT = 512;// 240;
 
 bool Scene::supersample = false;
 bool Scene::montecarlo = false;
+bool Scene::boundingbox = false;
 
 /* --- Global State Variables --- */
 
@@ -241,6 +242,7 @@ void menufunc(int value)
 //		g_RayTrace.preRenderInit();
       Scene::supersample = false;
       Scene::montecarlo = false;
+	  Scene::boundingbox = false;
 		break;
 	case 2:
 		// Start the Ray Tracing with supersampling
@@ -248,6 +250,7 @@ void menufunc(int value)
 		g_bRenderNormal = false;
 //		g_RayTrace.preRenderInit();
       Scene::supersample = true;
+	  Scene::boundingbox = false;
       Scene::montecarlo = false;
 		break;
    case 3:
@@ -257,8 +260,16 @@ void menufunc(int value)
 //		g_RayTrace.preRenderInit();
       Scene::supersample = false;
       Scene::montecarlo = true;
+	  Scene::boundingbox = false;
 		break;
-	case 4:
+   case 4:
+	   g_bRayTrace = true;
+	   g_bRenderNormal = false;
+	   Scene::supersample = false;
+	   Scene::montecarlo = false;
+	   Scene::boundingbox = true;
+	   break;
+	case 5:
 		// Quit Program
 		exit(0);
 		break;
@@ -491,7 +502,8 @@ int main (int argc, char ** argv)
 	glutAddMenuEntry("Render Ray Tracing",1);
 	glutAddMenuEntry("Render Ray Tracing Supersampling",2);
 	glutAddMenuEntry("Render Ray Tracing Monte Carlo",3);
-	glutAddMenuEntry("Quit",4);
+	glutAddMenuEntry("Render Ray Tracing Bounding Boxes",4);
+	glutAddMenuEntry("Quit", 5);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
 	/* replace with any animate code */

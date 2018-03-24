@@ -175,6 +175,23 @@ Vector RayTracer::shade(const Ray & ray)
 
 // =====================================================================
 
+Vector BBTracer::shade(const Ray & ray)
+{
+	for (unsigned int i = 0; i < scene->GetNumObjects(); i++)
+	{
+		SceneObject * obj = scene->GetObject(i);
+		SceneModel * casted = dynamic_cast<SceneModel*>(obj);
+		if (casted != NULL && casted->box.testIntersect(ray))
+		{
+			return Vector(1.0f, 0.0f, 1.0f);
+		}
+	}
+
+	return Vector();
+}
+
+// =====================================================================
+
 // Ray tracing but tracing 100 rays per pixel using a non uniform random "sampler"
 Vector SuperSamplingRayTracer::doTrace(int screenX, int screenY)
 {

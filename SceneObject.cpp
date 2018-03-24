@@ -75,6 +75,7 @@ void SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 		outHitInfo.hit = true;
 		outHitInfo.isLight = isLight;
 		outHitInfo.emission = emission;
+		outHitInfo.distance = distance;
 	}
 }
 
@@ -176,6 +177,7 @@ void SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 				outHitInfo.hit = true;
 				outHitInfo.isLight = isLight;
 				outHitInfo.emission = emission;
+				outHitInfo.distance = planeIntersectResult;
 			}
 		}
 	}
