@@ -36,8 +36,12 @@ public:
 
 	virtual Vector doTrace(int screenX, int screenY) = 0;
 protected:
-	HitInfo intersect(const Ray & ray);
+	HitInfo intersect(Ray & ray);
 	Vector lightContribution(HitInfo & info, Vector & lightVector, SceneLight * light);
+	float getLightAttenuation(Ray & ray)
+	{
+		return (0.15f + 0.03f * ray.getDistance());
+	}
 };
 
 // =================================================================================
@@ -48,7 +52,7 @@ public:
 	RayTracer(Scene * scene) :Tracer(scene) {}
 	virtual Vector doTrace(int screenX, int screenY);
 protected:
-	virtual Vector shade(const Ray & ray);
+	virtual Vector shade(Ray & ray);
 };
 
 // =================================================================================
@@ -58,7 +62,7 @@ class BBTracer : public RayTracer
 public:
 	BBTracer(Scene * scene):RayTracer(scene){}
 protected:
-	Vector shade(const Ray & ray);
+	Vector shade(Ray & ray);
 };
 
 // =================================================================================
@@ -74,7 +78,7 @@ public:
 
 class MonteCarloRayTracer : public RayTracer
 {
-private:
+protected:
 	FloatSampler pixelSampler;
 	FloatSampler russianRouletteSampler;
 	float pdfArea;
@@ -85,9 +89,19 @@ public:
 		pdfArea = 1.0f / (Scene::WINDOW_HEIGHT * Scene::WINDOW_WIDTH);
 	}
 
-	Vector doTrace(int screenX, int screenY);
-	Vector shade(const Ray & ray);
+	virtual Vector doTrace(int screenX, int screenY);
+	virtual Vector shade(Ray & ray);
 
-private:
+protected:
 	void samplePixel(int x, int y, float &st, float &ss, float &pdf);
+};
+
+// =================================================================================
+
+class PathTracer : public MonteCarloRayTracer
+{
+public:
+	PathTracer(Scene * scene) : MonteCarloRayTracer(scene){}
+	Vector doTrace(int screenX, int screenY);
+	Vector shade(Ray & ray);
 };

@@ -89,7 +89,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="3ds.cpp" />
-    <ClCompile Include="BoundingBox.cpp" />
+    <ClCompile Include="BVH.cpp" />
     <ClCompile Include="PhysicalMaterial.cpp" />
     <ClCompile Include="Pic.cpp" />
     <ClCompile Include="RayTrace.cpp" />
@@ -105,7 +105,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="3ds.h" />
-    <ClInclude Include="BoundingBox.h" />
+    <ClInclude Include="BVH.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="PhysicalMaterial.h" />
     <ClInclude Include="Ray.h" />

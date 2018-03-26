@@ -5,7 +5,7 @@
 #include "Utils.h"
 #include "Ray.h"
 #include "Sampler.h"
-#include "BoundingBox.h"
+#include "BVH.h"
 
 namespace SceneObjectType
 {
@@ -58,7 +58,7 @@ public:
 
 	virtual void computeArea() { }
 
-	virtual void testIntersection(const Ray & ray, HitInfo & outInfo) = 0;
+	virtual void testIntersection(Ray & ray, HitInfo & outInfo) = 0;
 	virtual void applyAffineTransformations() = 0;
 	virtual Vector sampleShape(float &pdf) = 0;
 
@@ -104,7 +104,7 @@ public:
 	SceneSphere(void) : SceneObject("Sphere", SceneObjectType::Sphere) { }
 	SceneSphere(std::string nm) : SceneObject(nm, SceneObjectType::Sphere) { }
 
-	void testIntersection(const Ray & ray, HitInfo & outInfo);
+	void testIntersection(Ray & ray, HitInfo & outInfo);
 	void applyAffineTransformations();
 	Vector sampleShape(float &pdf);
 };
@@ -130,7 +130,7 @@ public:
 
 	SceneTriangle(std::string nm) : SceneObject(nm, SceneObjectType::Triangle) {}
 
-	void testIntersection(const Ray & ray, HitInfo & outInfo);
+	void testIntersection(Ray & ray, HitInfo & outInfo);
 	void applyAffineTransformations();
 	void computeArea();
 	Vector sampleShape(float &pdf);
@@ -150,7 +150,7 @@ private:
 	IntegerSampler sampler;
 public:
 #ifdef _RT_USE_BB
-	BoundingBox box;
+	BoundingVolume * bv;
 #endif
 	std::string filename;
 	std::vector<SceneTriangle> triangleList;
@@ -160,6 +160,12 @@ public:
 	SceneModel(void) : SceneObject("Model", SceneObjectType::Model) {}
 	SceneModel(std::string file) : SceneObject("Model", SceneObjectType::Model) { filename = file; }
 	SceneModel(std::string file, std::string nm) : SceneObject(nm, SceneObjectType::Model) { filename = file; 	}
+	~SceneModel()
+	{ 
+#ifdef _RT_USE_BB
+		delete bv; 
+#endif
+	}
 
 	// -- Accessor Functions --
 	// - GetNumTriangles - Returns the number of triangles in the model
@@ -170,8 +176,11 @@ public:
 
 	void initSampler();
 
-	void testIntersection(const Ray & ray, HitInfo & outInfo);
+	void testIntersection(Ray & ray, HitInfo & outInfo);
 	void applyAffineTransformations();
+#ifdef _RT_USE_BB
+	void initBoundingVolume(std::string type);
+#endif
 	void computeArea();
 	Vector sampleShape(float &pdf);
 };

@@ -76,6 +76,15 @@
 #define CHECK_ATTR(a) (a == NULL ? "" : a)
 #define CHECK_ATTR2(a,b) (a == NULL ? b : a)
 
+enum TracerType
+{
+	RAY_TRACE = 0,
+	SUPER_SAMPLING_RAY_TRACE = 1,
+	MONTE_CARLO_RAY_TRACE = 2,
+	BB_RAY_TRACE = 3,
+	PATH_TRACE = 4
+};
+
 /*
 	SceneBackground Class - The Background properties of a ray-trace scene
 
@@ -97,6 +106,7 @@ class Scene
 {
 public:
    static const int WINDOW_HEIGHT, WINDOW_WIDTH;
+   static TracerType tracerType;
    static bool supersample;
    static bool montecarlo;
    static bool boundingbox;

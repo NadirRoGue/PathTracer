@@ -93,8 +93,8 @@
 			<type val="AreaLight"/>
 			<id val="2"/>
 			<color red="12.0" green="12.0" blue="12.0"/>
-			<position x="0.0" y="6.0" z="0.0"/>
-			<attenuation constant="0.15" linear="0.03" quadratic="0.00"/>
+			<position x="0.0" y="7.45" z="0.0"/>
+			<attenuation constant="0.15" linear="0.00" quadratic="0.00"/>
 		</light>
 		
 	</light_list>
@@ -102,7 +102,7 @@
 	<!-- List of Scene Objects -->
 	<object_list>
 		<!-- Sphere Object -->
-		<!--
+		
 		<sphere name="Sphere" material="MatteGray" radius="1.0">
 			<physicalMaterial name="Rough" />
 			<scale x="1.0" y="1.0" z="1.0"/>
@@ -130,7 +130,7 @@
 
 			<center x="0.0" y="0.0" z="0.0"/>
 		</sphere>
-		-->
+		
 		<triangle name="LightTriangle1" lightId="2">
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="0.0" z="0.0"/>
@@ -138,19 +138,19 @@
 			<physicalMaterial name="Matte" />
 
 			<vertex index="0" material="LightWhite">
-				<position x="-1.5" y="7.0" z="1.5"/>
+				<position x="-1.5" y="7.45" z="1.5"/>
 				<normal x="0.0" y="-1.0" z="0.0"/>
 				<texture u="0.0" v="0.0"/>
 			</vertex>
 
 			<vertex index="1" material="LightWhite">
-				<position x="1.5" y="7.0" z="1.5"/>
+				<position x="1.5" y="7.45" z="1.5"/>
 				<normal x="0.0" y="-1.0" z="0.0"/>
 				<texture u="1.0" v="0.0"/>
 			</vertex>
 
 			<vertex index="2" material="LightWhite">
-				<position x="-1.5" y="7.0" z="-1.5"/>
+				<position x="-1.5" y="7.45" z="-1.5"/>
 				<normal x="0.0" y="-1.0" z="0.0"/>
 				<texture u="0.0" v="1.0"/>
 			</vertex>
@@ -163,19 +163,19 @@
 			<physicalMaterial name="Matte" />
 
 			<vertex index="0" material="LightWhite">
-				<position x="1.5" y="7.0" z="1.5"/>
+				<position x="1.5" y="7.45" z="1.5"/>
 				<normal x="0.0" y="-1.0" z="0.0"/>
 				<texture u="1.0" v="0.0"/>
 			</vertex>
 
 			<vertex index="1" material="LightWhite">
-				<position x="1.5" y="7.0" z="-1.5"/>
+				<position x="1.5" y="7.45" z="-1.5"/>
 				<normal x="0.0" y="-1.0" z="0.0"/>
 				<texture u="1.0" v="1.0"/>
 			</vertex>
 			
 			<vertex index="2" material="LightWhite">
-				<position x="-1.5" y="7.0" z="-1.5"/>
+				<position x="-1.5" y="7.45" z="-1.5"/>
 				<normal x="0.0" y="-1.0" z="0.0"/>
 				<texture u="0.0" v="1.0"/>
 			</vertex>
@@ -437,22 +437,25 @@
 			
 		</triangle>
 		
-		<!--
+		
 		<model filename="objects/cube.3ds" name="cube" material="Purple">
 			<physicalMaterial name="Matte" />
+			<boundingVolume type="SphereVolume"/>
 			<scale x="2.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="30.0" z="0.0"/>
 			<position x="0.0" y="0.0" z="0.0"/>
 		</model>
 		<model filename="objects/cube.3ds" name="cube" material="Purple">
 			<physicalMaterial name="Matte" />
+			<boundingVolume type="SphereVolume"/>
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="-30.0" z="0.0"/>
 			<position x="0.0" y="1.0" z="0.0"/>
 		</model>
-		-->
-		<model filename="objects/dragon2.obj" name="cube" material="WhiteMatte">
-			<physicalMaterial name="Matte" />
+		
+		<model filename="objects/dragon2.obj" name="cube" material="Transparent">
+			<boundingVolume type="BoxVolume"/>
+			<physicalMaterial name="Glass" />
 			<scale x="1.0" y="1.0" z="1.0"/>
 			<rotation x="0.0" y="180.0" z="0.0"/>
 			<position x="0.0" y="2.5" z="0.0"/>

@@ -10,7 +10,7 @@ private:
 	Vector direction;
 	unsigned int depth;
 	float cosineWeight;
-
+	float distance;
 public:
 
 	Ray() :origin(Vector()), direction(Vector()), depth(0), cosineWeight(-1.0f) {}
@@ -22,6 +22,8 @@ public:
 	const Vector & getDirection() const { return direction; }
 	const unsigned int getDepth() const { return depth; }
 	const float getCosineWeight() const { return cosineWeight; }
+	float getDistance() { return distance; }
+	void setDistance(float d) { distance = d; }
 };
 
 struct HitInfo
@@ -36,5 +38,4 @@ struct HitInfo
 	SceneMaterial hittedMaterial;
 	std::string physicalMaterial;
 	float u, v;
-	float distance;
 } typedef HitInfo;

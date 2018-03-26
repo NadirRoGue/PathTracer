@@ -62,21 +62,23 @@ void RayTrace::initializeTracer()
 		delete tracer;
 	}
 
-	if (Scene::montecarlo)
+	switch (Scene::tracerType)
 	{
-		tracer = new MonteCarloRayTracer(&m_Scene);
-	}
-	else if (Scene::supersample)
-	{
-		tracer = new SuperSamplingRayTracer(&m_Scene);
-	}
-	else if (Scene::boundingbox)
-	{
-		tracer = new BBTracer(&m_Scene);
-	}
-	else
-	{
+	case TracerType::RAY_TRACE:
 		tracer = new RayTracer(&m_Scene);
+		break;
+	case TracerType::SUPER_SAMPLING_RAY_TRACE:
+		tracer = new SuperSamplingRayTracer(&m_Scene);
+		break;
+	case TracerType::MONTE_CARLO_RAY_TRACE:
+		tracer = new MonteCarloRayTracer(&m_Scene);
+		break;
+	case TracerType::BB_RAY_TRACE:
+		tracer = new BBTracer(&m_Scene);
+		break;
+	case TracerType::PATH_TRACE:
+		tracer = new PathTracer(&m_Scene);
+		break;
 	}
 }
 

@@ -5,7 +5,7 @@
 
 // ==========================================================
 
-void SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
+void SceneSphere::testIntersection(Ray & ray, HitInfo & outHitInfo)
 {
 	outHitInfo.hit = false;
 
@@ -75,7 +75,7 @@ void SceneSphere::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 		outHitInfo.hit = true;
 		outHitInfo.isLight = isLight;
 		outHitInfo.emission = emission;
-		outHitInfo.distance = distance;
+		outHitInfo.inRay.setDistance((hitPoint - o).Magnitude());
 	}
 }
 
@@ -101,7 +101,7 @@ Vector SceneSphere::sampleShape(float &pdf)
 
 // =================================================================================
 
-void SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
+void SceneTriangle::testIntersection(Ray & ray, HitInfo & outHitInfo)
 {
 	outHitInfo.hit = false;
 
@@ -177,7 +177,7 @@ void SceneTriangle::testIntersection(const Ray & ray, HitInfo & outHitInfo)
 				outHitInfo.hit = true;
 				outHitInfo.isLight = isLight;
 				outHitInfo.emission = emission;
-				outHitInfo.distance = planeIntersectResult;
+				outHitInfo.inRay.setDistance((hittedPoint - center).Magnitude());
 			}
 		}
 	}
@@ -283,15 +283,14 @@ Vector SceneTriangle::sampleShape(float &pdf)
 
 // =================================================================================
 
-void SceneModel::testIntersection(const Ray & ray, HitInfo & outInfo)
+void SceneModel::testIntersection(Ray & ray, HitInfo & outInfo)
 {
 #ifdef _RT_USE_BB
-	if (!box.testIntersect(ray))
+	if (!bv->testIntersect(ray))
 	{
 		outInfo.hit = false;
 		return;
 	}
-	//printf("Hit\n");
 #endif
 
 	HitInfo closer;
@@ -333,8 +332,19 @@ void SceneModel::applyAffineTransformations()
 	position = rotation = Vector();
 	scale = Vector(1.0f, 1.0f, 1.0f);
 #endif
+}
 
 #ifdef _RT_USE_BB
+void SceneModel::initBoundingVolume(std::string type)
+{
+	if (type == "" || type.empty() || type == "SphereVolume")
+	{
+		bv = new BoundingSphere();
+	}
+	else if (type == "BoxVolume")
+	{
+		bv = new BoundingBox();
+	}
 
 	float hx, hy, hz;
 	hx = hy = hz = -std::numeric_limits<float>().max();
@@ -367,10 +377,9 @@ void SceneModel::applyAffineTransformations()
 	Vector highest(hx, hy, hz);
 	Vector lowest(lx, ly, lz);
 
-	box.setCorners(highest, lowest);
-
-#endif
+	bv->setCorners(highest, lowest);
 }
+#endif
 
 void SceneModel::computeArea()
 {

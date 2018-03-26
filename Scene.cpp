@@ -398,6 +398,9 @@ bool Scene::Load (char *filename)
 				}
 
 				tempModel->applyAffineTransformations();
+#ifdef _RT_USE_BB
+				tempModel->initBoundingVolume(CHECK_ATTR(tempObjectNode.getChildNode("boundingVolume").getAttribute("type")));
+#endif
 				tempModel->computeArea();
 				tempModel->initSampler();
 				m_ObjectList.push_back (tempModel);

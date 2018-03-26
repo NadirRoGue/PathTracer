@@ -1,4 +1,4 @@
-#include "BoundingBox.h"
+#include "BVH.h"
 
 void BoundingBox::buildPlanes(Vector &highestV, Vector &lowestV)
 {

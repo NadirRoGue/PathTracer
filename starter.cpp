@@ -46,6 +46,8 @@
 const int Scene::WINDOW_WIDTH = 512;// 320;
 const int Scene::WINDOW_HEIGHT = 512;// 240;
 
+TracerType Scene::tracerType = TracerType::RAY_TRACE;
+
 bool Scene::supersample = false;
 bool Scene::montecarlo = false;
 bool Scene::boundingbox = false;
@@ -239,37 +241,33 @@ void menufunc(int value)
 		// Start the Ray Tracing
 		g_bRayTrace = true;
 		g_bRenderNormal = false;
-//		g_RayTrace.preRenderInit();
-      Scene::supersample = false;
-      Scene::montecarlo = false;
-	  Scene::boundingbox = false;
+		Scene::tracerType = TracerType::RAY_TRACE;
 		break;
 	case 2:
 		// Start the Ray Tracing with supersampling
 		g_bRayTrace = true;
 		g_bRenderNormal = false;
 //		g_RayTrace.preRenderInit();
-      Scene::supersample = true;
-	  Scene::boundingbox = false;
-      Scene::montecarlo = false;
+		Scene::tracerType = TracerType::SUPER_SAMPLING_RAY_TRACE;
 		break;
    case 3:
 		// Start the Ray Tracing with Monte Carlo
 		g_bRayTrace = true;
 		g_bRenderNormal = false;
 //		g_RayTrace.preRenderInit();
-      Scene::supersample = false;
-      Scene::montecarlo = true;
-	  Scene::boundingbox = false;
+		Scene::tracerType = TracerType::MONTE_CARLO_RAY_TRACE;
 		break;
    case 4:
 	   g_bRayTrace = true;
 	   g_bRenderNormal = false;
-	   Scene::supersample = false;
-	   Scene::montecarlo = false;
-	   Scene::boundingbox = true;
+	   Scene::tracerType = TracerType::BB_RAY_TRACE;
 	   break;
-	case 5:
+   case 5:
+	   g_bRayTrace = true;
+	   g_bRenderNormal = false;
+	   Scene::tracerType = TracerType::PATH_TRACE;
+	   break;
+	case 6:
 		// Quit Program
 		exit(0);
 		break;
@@ -503,7 +501,8 @@ int main (int argc, char ** argv)
 	glutAddMenuEntry("Render Ray Tracing Supersampling",2);
 	glutAddMenuEntry("Render Ray Tracing Monte Carlo",3);
 	glutAddMenuEntry("Render Ray Tracing Bounding Boxes",4);
-	glutAddMenuEntry("Quit", 5);
+	glutAddMenuEntry("Render Path Tracing", 5);
+	glutAddMenuEntry("Quit", 6);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
 	/* replace with any animate code */

@@ -38,6 +38,28 @@ bool MatteMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay,
 	return true;
 }
 
+void MatteMaterial::sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult)
+{
+	Vector zVector = hitInfo.hitNormal;
+	Vector yVector, xVector;
+	ComputeOrthoNormalBasis(zVector, yVector, xVector);
+
+	Vector sample = sampler.sampleHemiSphere();
+	Vector scatteredDir = WorldUniformHemiSample(sample, zVector, yVector, xVector).Normalize();
+
+	reflectRay = Ray(hitInfo.hitPoint + scatteredDir * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
+	reflectRay.setWeight(fabs(zVector.Dot(scatteredDir)));
+	// cosine weight hemisphere PDF = cos / PI
+	// diffuse-diffuse sampling PDF = 1 / 2*PI
+	// since rendering equation has cos, both terms cancel
+
+	// OPTIMIZATION: Cancel PI term with diffuse reflectance term
+	RPdf = 1.0f / (2.0f * float(M_PI));
+	Rresult = computeDiffuseRadiance(hitInfo);
+	kr = 1.0f;
+	kt = 0.0f;
+}
+
 // ======================================================================================
 
 void MetallicMaterial::scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt)
@@ -55,6 +77,18 @@ void MetallicMaterial::sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ra
 	kr = 1.0f;
 	Vector invRayDir(hitInfo.inRay.getDirection());
 	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
+	reflectRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
+	RPdf = 1.0f;
+	TPdf = 0.0f;
+}
+
+void MetallicMaterial::sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult)
+{
+	kt = 0.0f;
+	kr = 1.0f;
+	Vector invRayDir(hitInfo.inRay.getDirection());
+	Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
+	Rresult = hitInfo.hittedMaterial.reflective;
 	reflectRay = Ray(hitInfo.hitPoint + reflectedDir * _RT_BIAS, reflectedDir, hitInfo.inRay.getDepth() + 1);
 	RPdf = 1.0f;
 	TPdf = 0.0f;
@@ -110,6 +144,37 @@ void GlassMaterial::sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray &
 		Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
 		reflectRay = Ray(reflOrigin, reflectedDir, hitInfo.inRay.getDepth() + 1);
 	}
+}
+
+void GlassMaterial::sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult)
+{
+	Vector refracted;
+	float percentage;
+	attemptToTransmitRay(hitInfo, refracted, percentage);
+
+	kr = percentage;
+	kt = 1.0f - percentage;
+
+	bool outside = hitInfo.inRay.getDirection().Dot(hitInfo.hitNormal) < 0;
+
+	if (kt > 0.0f)
+	{
+		TPdf = kt;
+		Vector transOrigin = outside ? hitInfo.hitPoint - (hitInfo.hitNormal * _RT_BIAS) : hitInfo.hitPoint + (hitInfo.hitNormal * _RT_BIAS);
+		refractRay = Ray(transOrigin, refracted, hitInfo.inRay.getDepth() + 1);
+	}
+
+	if (kr > 0.0f)
+	{
+		RPdf = kr;
+		Vector reflOrigin = outside ? hitInfo.hitPoint + (hitInfo.hitNormal * _RT_BIAS) : hitInfo.hitPoint - (hitInfo.hitNormal * _RT_BIAS);
+		Vector invRayDir(hitInfo.inRay.getDirection());
+		Vector reflectedDir = invRayDir.reflect(hitInfo.hitNormal);
+		reflectRay = Ray(reflOrigin, reflectedDir, hitInfo.inRay.getDepth() + 1);
+	}
+
+	Rresult = hitInfo.hittedMaterial.reflective * kr;
+	Tresult = hitInfo.hittedMaterial.transparent * kt;
 }
 
 bool GlassMaterial::computeSnellRefractedDirection(float inIOR, float outIOR, Vector inDir, Vector hitNormal, Vector & outDir)
@@ -253,6 +318,50 @@ bool RoughMaterial::sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay,
 	pdf = fabs(m.Dot(n));
 
 	return pdf > 0.0f;
+}
+
+void RoughMaterial::sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult)
+{
+	float roughness = hitInfo.hittedMaterial.roughness;
+
+	Vector v = hitInfo.inRay.getDirection();
+	Vector invV = v * -1.0f;
+	Vector n = hitInfo.hitNormal;
+	Vector m = sampleMicrofacetNormal(n, roughness);
+	Vector l = hitInfo.lightVector;
+	Vector h = (m + invV).Normalize();
+
+	Vector scatteredDir = v.reflect(m);
+
+	float F = conductorFresnel(scatteredDir, h, hitInfo.hittedMaterial.refraction_index.x);
+	float G = geometricSmithSchlick(invV, h, n, scatteredDir, roughness);
+
+	float bottom = clampValue(4.0f * n.Dot(scatteredDir) * n.Dot(invV), 0.0f, 1.0f);
+
+	float cos = clampValue(m.Dot(n), 0.0f, 1.0f);
+	float sin = sqrtf(1.0f - cos * cos);
+
+	float fr = 0.0f;
+	if (bottom > 0.0f)
+	{
+		fr = std::max((F * G * sin) / bottom, 0.0f);
+	}
+
+	// Energy conservation
+	float diffuseFresnelV = 1.0f - conductorFresnel(scatteredDir, n, hitInfo.hittedMaterial.refraction_index.x);
+
+	Rresult = hitInfo.hittedMaterial.diffuse * diffuseFresnelV + Vector(1.0f, 1.0f, 1.0f) * fr;
+
+	//std::cout << result.x << ", " << result.y << ", " << result.z << std::endl;
+
+	reflectRay = Ray(hitInfo.hitPoint + scatteredDir * _RT_BIAS, scatteredDir, hitInfo.inRay.getDepth() + 1);
+	reflectRay.setWeight(fabs(m.Dot(scatteredDir)));
+
+	//pdf = 1.0f / roughness;
+	RPdf = fabs(m.Dot(n));
+
+	kt = 0.0f;
+	kr = 1.0f;
 }
 
 float RoughMaterial::computeXi(float a)

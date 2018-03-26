@@ -25,6 +25,8 @@ public:
 
 	virtual bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf) { result = Vector(); return false; }
 	virtual void sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf) { kr = 0.0f; kt = 0.0f; }
+	
+	virtual void sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &TResult) { kr = 0.0f, kt = 0.0f; }
 };
 
 // =====================================================================================================
@@ -39,6 +41,8 @@ public:
 	Vector computeAmbientRadiance(HitInfo & hitInfo);
 	Vector computeDiffuseRadiance(HitInfo & hitInfo);
 	bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
+
+	void sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult);
 };
 
 // =====================================================================================================
@@ -50,6 +54,8 @@ public:
 	
 	void scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt);
 	void sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf);
+
+	void sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult);
 };
 
 // =====================================================================================================
@@ -61,6 +67,8 @@ public:
 	
 	void scatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, Ray &refractRay, float &kt);
 	void sampleScatterReflexionAndRefraction(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf);
+
+	void sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult);
 private:
 	bool computeSnellRefractedDirection(float inIOR, float outIOR, Vector inDir, Vector hitNormal, Vector & outDir);
 	float computeFresnelReflectedEnergy(float iIOR, Vector inDir, Vector inNormal, float oIOR, Vector outDir, Vector outNormal);
@@ -79,6 +87,7 @@ public:
 	Vector computeAmbientRadiance(HitInfo & hitInfo);
 	Vector computeDiffuseRadiance(HitInfo & hitInfo);
 	bool sampleDiffuseRadiance(HitInfo & hitInfo, Ray & scatteredRay, Vector &result, float &pdf);
+	void sampleMaterial(HitInfo & hitInfo, Ray & reflectRay, float &kr, float &RPdf, Ray &refractRay, float &kt, float &TPdf, Vector &Rresult, Vector &Tresult);
 protected:
 	//χ(a) Equal to one if a > 0 and zero if a ≤ 0
 	float computeXi(float a);

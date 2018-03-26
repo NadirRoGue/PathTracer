@@ -13,7 +13,7 @@ void Tracer::init()
 }
 
 // Checks whether the given ray intersect with any scene geometry
-HitInfo Tracer::intersect(const Ray & ray)
+HitInfo Tracer::intersect(Ray & ray)
 {
 	HitInfo info;
 
@@ -108,7 +108,7 @@ Vector RayTracer::doTrace(int screenX, int screenY)
 
 // Return the color of a given point by casting a ray in a direction from that point
 // and accumulating the radiance
-Vector RayTracer::shade(const Ray & ray)
+Vector RayTracer::shade(Ray & ray)
 {
 	HitInfo info;
 
@@ -135,16 +135,16 @@ Vector RayTracer::shade(const Ray & ray)
 			SceneLight * sl = scene->GetLight(i);
 
 			lightVector = (sl->position - info.hitPoint);
-			I = lightContribution(info, lightVector, sl) / sl->color.Magnitude();
+			I = lightContribution(info, lightVector, sl);// / sl->color.Magnitude();
 			
 			lightVector.Normalize();
 			info.lightVector = lightVector;
 			float cosValue = clampValue(info.hitNormal.Dot(lightVector), 0.0f, 1.0f);
 
-			// Diffuse reflectance
+			// Specular + Diffuse reflectance
 			diffuseC = BRDF->computeDiffuseRadiance(info);
 
-			Lr = Lr + (I * diffuseC * cosValue) / float(M_PI);
+			Lr = Lr + (I * diffuseC * cosValue);
 		}
 
 		// Specular reflection
@@ -175,18 +175,19 @@ Vector RayTracer::shade(const Ray & ray)
 
 // =====================================================================
 
-Vector BBTracer::shade(const Ray & ray)
+Vector BBTracer::shade(Ray & ray)
 {
+#ifdef _RT_USE_BB
 	for (unsigned int i = 0; i < scene->GetNumObjects(); i++)
 	{
 		SceneObject * obj = scene->GetObject(i);
 		SceneModel * casted = dynamic_cast<SceneModel*>(obj);
-		if (casted != NULL && casted->box.testIntersect(ray))
+		if (casted != NULL && casted->bv->testIntersect(ray))
 		{
 			return Vector(1.0f, 0.0f, 1.0f);
 		}
 	}
-
+#endif
 	return Vector();
 }
 
@@ -241,7 +242,7 @@ Vector MonteCarloRayTracer::doTrace(int screenX, int screenY)
 	return pixelColor;
 }
 
-Vector MonteCarloRayTracer::shade(const Ray & ray)
+Vector MonteCarloRayTracer::shade(Ray & ray)
 {
 	if (ray.getDepth() > _RT_RUSSIAN_ROULETE_MIN_BOUNCE && ray.getCosineWeight() >= 0.0f)
 	{
@@ -384,4 +385,118 @@ void MonteCarloRayTracer::samplePixel(int x, int y, float &st, float &ss, float 
 	//pdf(y) = 1 / (1 - 0) = 1
 	//pdf = 1 * 1 = 1
 	pdf = 1.0f;
+}
+
+// ================================================================
+
+Vector PathTracer::doTrace(int screenX, int screenY)
+{
+	Vector pixelColor;
+	float st, ss;
+	float pdf;
+	Ray ray;
+
+	// Monte carlo AA
+	for (unsigned int i = 0; i < _RT_PATHTRACER_PIXEL_SAMPLES; i++)
+	{
+		samplePixel(screenX, screenY, st, ss, pdf);
+		ray = wrapper.getRayForPixel(st, ss);
+
+		pixelColor = pixelColor + shade(ray) / pdf;
+	}
+
+	pixelColor = pixelColor / _RT_PATHTRACER_PIXEL_SAMPLES;
+
+	return pixelColor;
+}
+
+Vector PathTracer::shade(Ray & ray)
+{
+	if (ray.getDepth() > _RT_PATHTRACER_RR_BOUNCES && ray.getCosineWeight() >= 0.0f)
+	{
+		float p = russianRouletteSampler.sampleRect();
+
+		if (p > ray.getCosineWeight())
+		{
+			return Vector();
+		}
+	}
+
+	HitInfo info;
+
+	if (ray.getDepth() < _RT_PATHTRACER_BOUNCES && (info = intersect(ray)).hit)
+	{
+		// If its a light, return the color and stop bouncing
+		if (info.isLight)
+		{
+			return info.emission;
+		}
+
+		SceneMaterial averageMaterialAtPoint = info.hittedMaterial;
+		Vector diffuseC = averageMaterialAtPoint.diffuse;
+
+		// If this ray passed the roulette test, divide by its probability
+		if (ray.getCosineWeight() > 0.0f)
+		{
+			diffuseC = diffuseC / ray.getCosineWeight();
+		}
+
+		// Purple color to identify wrong setted scene objects
+		PhysicalMaterial * BRDF = PhysicalMaterialTable::getInstance().getMaterialByName(info.physicalMaterial);
+		if (BRDF == NULL)
+		{
+			return Vector(1.0, 0.0, 1.0);
+		}
+
+		Ray reflected, transmitted;
+		float kr, kt;
+		float RPdf, TPdf;
+		Vector Rresult, Tresult;
+		BRDF->sampleMaterial(info, reflected, kr, RPdf, transmitted, kt, TPdf, Rresult, Tresult);
+
+		if (kr != 0.0f && kt == 0.0f)
+		{
+			//fixGammut(Rresult);
+			return Rresult * shade(reflected) / RPdf;
+		}
+		else if (kt != 0.0f && kr == 0.0f)
+		{
+			return Tresult * shade(transmitted) / TPdf;
+		}
+		else
+		{
+			if (ray.getDepth() > _RT_PATHTRACER_RR_REFLEX_TRANSMISSION_BOUNCES && kr > 0.0f && kt > 0.0f)
+			{
+				float reflectiveProbability = russianRouletteSampler.sampleRect();
+				if (kr > reflectiveProbability)
+				{
+					return Rresult * shade(reflected) / kr;
+				}
+				else
+				{
+					return Tresult * shade(transmitted) / (1 - kr);
+				}
+			}
+			else  // No depth enough to apply russian roulette
+			{
+				Vector accumulated;
+				if (kr > 0.0f)
+				{
+					accumulated = accumulated + Rresult * shade(reflected);
+				}
+
+				if (kt > 0.0f)
+				{
+					accumulated = accumulated + Tresult * shade(transmitted);
+				}
+
+				return accumulated;
+			}
+		}
+	}
+	else
+	{
+		//std::cout << "Return black with depth " << ray.getDepth() << std::endl;
+		return scene->GetBackground().color;
+	}
 }
